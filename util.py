@@ -1,6 +1,5 @@
 # Environment
 import gym
-from gym.utils.play import play
 #from gym.spaces import prng
 
 # Utility
