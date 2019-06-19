@@ -2,7 +2,7 @@
 import tensorflow as tf
 from keras import Sequential, Model, Input
 from keras.utils import to_categorical
-from keras.layers import Dense, Flatten,multiply, Dropout, Reshape, Activation, Lambda
+from keras.layers import Dense, Flatten,multiply, Dropout, Reshape, Activation, Lambda, Dot
 from keras.layers.convolutional import Conv2D, Conv2DTranspose
 from keras.optimizers import Adam
 from keras import backend as K
@@ -20,10 +20,17 @@ def clipped_mse(y_true, y_pred):
 # ...well actually it has the correct shape and reduces properly
 # Basically, I'm using a lambda function with tf to split my keras tensor
 def min_mse(y_true, y_pred):
+    #bad_way = K.permute_dimensions(tf.convert_to_tensor(Lambda(lambda tensor: tf.split(tensor, 6, axis = -1))(y_pred)),(1,2,3,0,4))
     return K.min(K.mean(K.square(y_pred - y_true),(0,1,2,3),keepdims = True))
 
 
+def w_sum(arg):
+    return K.sum(arg[0] * K.tile(Reshape((4, 1, 1, 1))(arg[1]), (1, 1, 105, 80, 6)), axis=1)
+
+
 def latent_model(learning_rate=0.001, decay=0.0):
+
+    # Forward Prediction
     image = Input(shape=(105, 80, 6), name='image')
     x = Conv2D(64, (4, 4), strides=2, activation='relu', input_shape=(105, 80, 6))(image)
     x = Conv2D(128, (3, 3), strides=2, activation='relu')(x)
@@ -42,12 +49,33 @@ def latent_model(learning_rate=0.001, decay=0.0):
     x = Conv2DTranspose(128, (3, 3), strides=2, activation='relu')(x)
     x = Conv2DTranspose(128, (3, 3), strides=2, activation='relu')(x)
     x = Conv2DTranspose(64, (6, 3), strides=2, activation='relu')(x)
-    # Add a new dimension
-    # Then use broadcasting
-    new_image = Conv2DTranspose(6*4, (7, 4), strides=2, activation='relu')(x)
-    new_image = Reshape((105,80,6,4))(new_image)
-    model = Model(inputs=[image], outputs=[new_image])
-    model.compile(loss=min_mse, optimizer=Adam(lr=learning_rate, decay=decay))
+    x = Conv2DTranspose(6*4, (7, 4), strides=2, activation='relu')(x)
+    new_image = Reshape((4,105,80,6))(x)
+
+    # Latent Prediction
+    x = Conv2D(64, (4, 4), strides=2, activation='relu', input_shape=(105, 80, 12))(image)
+    x = Conv2D(128, (3, 3), strides=2, activation='relu')(x)
+    x = Conv2D(256, (3, 3), strides=2, activation='relu')(x)
+    x = Conv2D(256, (3, 3), strides=2, activation='relu')(x)
+    x = Flatten()(x)
+    x = Dropout(0.2)(x)
+    x = Dense(512, activation='relu')(x)
+    x = BatchNormalization()(x)
+    x = Dropout(0.2)(x)
+    x = Dense(256, activation='relu')(x)
+    x = BatchNormalization()(x)
+    x = Dropout(0.2)(x)
+    x = Dense(64, activation='relu')(x)
+    x = BatchNormalization()(x)
+    x = Activation('sigmoid')(x)
+    action = Dense(4, activation='softmax')(x)
+    #print(new_image.shape)
+    #print(K.tile(Reshape((4,1,1,1))(action),(1,1,105,80,6)).shape)
+    pred_image = Lambda(w_sum)([new_image,action])
+    #print(pred_image.shape)
+
+    model = Model(inputs=[image], outputs=[new_image,pred_image])
+    model.compile(loss=[min_mse,'mse'], loss_weights = [0.5,0.5], optimizer=Adam(lr=learning_rate, decay=decay))
 
     return model
 

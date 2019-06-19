@@ -107,7 +107,7 @@ if __name__ == '__main__':
             #episodes = util.load_episodes("/content/gdrive/My Drive/Colab Notebooks/Trained_Model/",
             #                              list(range(2 * i, 2 * i + 2)))
             data, actions, targets = util.forward_data(episodes)
-            latent_model.fit([(data - np.mean(data, axis=0)) / 255], np.moveaxis(np.repeat(np.array([targets]),4,axis = 0),0,-1), batch_size=16, epochs=1, validation_split=0.2, shuffle=True)
+            latent_model.fit([(data - np.mean(data, axis=0)) / 255], [np.moveaxis(np.repeat(np.array([targets]),4,axis = 0),0,1),targets], batch_size=16, epochs=1, validation_split=0.2, shuffle=True)
             #latent_model.fit([(data - np.mean(data, axis=0)) / 255],targets, batch_size=16, epochs=1,validation_split=0.2, shuffle=True)
             # f_model.fit([(data-np.mean(data,axis=0))/255,actions],[targets],batch_size = 64, epochs = 10, validation_split = 0.2, shuffle = True)
             del data
