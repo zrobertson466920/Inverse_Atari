@@ -74,8 +74,8 @@ def latent_model(learning_rate=0.001, decay=0.0):
     pred_image = Lambda(w_sum)([new_image,action])
     #print(pred_image.shape)
 
-    model = Model(inputs=[image], outputs=[new_image,pred_image])
-    model.compile(loss=[min_mse,'mse'], loss_weights = [0.5,0.5], optimizer=Adam(lr=learning_rate, decay=decay))
+    model = Model(inputs=[image], outputs=[new_image,pred_image,action])
+    model.compile(loss=[min_mse,'mse',None], loss_weights = [0.5,0.5,0.0], optimizer=Adam(lr=learning_rate, decay=decay))
 
     return model
 
