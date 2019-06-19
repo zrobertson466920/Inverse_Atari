@@ -1,7 +1,8 @@
 # Keras
+import tensorflow as tf
 from keras import Sequential, Model, Input
 from keras.utils import to_categorical
-from keras.layers import Dense, Flatten,multiply, Dropout, Reshape, Activation
+from keras.layers import Dense, Flatten,multiply, Dropout, Reshape, Activation, Lambda
 from keras.layers.convolutional import Conv2D, Conv2DTranspose
 from keras.optimizers import Adam
 from keras import backend as K
@@ -13,6 +14,38 @@ from keras.models import model_from_json
 
 def clipped_mse(y_true, y_pred):
         return K.mean(K.maximum(K.square(y_pred - y_true), 10), axis=-1)
+
+
+# Has not been tested
+def min_mse(y_true, y_pred):
+    #bad_way = K.permute_dimensions(tf.convert_to_tensor(Lambda(lambda tensor: tf.split(tensor, 6, axis = -1))(y_pred)),(1,2,3,0,4))
+    return K.min(K.mean(K.square(K.permute_dimensions(tf.convert_to_tensor(Lambda(lambda tensor: tf.split(tensor, 6, axis = -1))(y_pred)),(1,2,3,0,4)) - y_true),axis = (0,1,2,3)),keepdims = True)
+
+
+def latent_model(learning_rate=0.001, decay=0.0):
+    image = Input(shape=(105, 80, 6), name='image')
+    x = Conv2D(64, (4, 4), strides=2, activation='relu', input_shape=(105, 80, 6))(image)
+    x = Conv2D(128, (3, 3), strides=2, activation='relu')(x)
+    x = Conv2D(128, (3, 3), strides=2, activation='relu')(x)
+    x = Conv2D(128, (3, 3), strides=2, activation='relu')(x)
+    x = Flatten()(x)
+    x = Dropout(0.2)(x)
+    x = Dense(512, activation='relu')(x)
+    x = BatchNormalization()(x)
+    x = Dense(1024, activation='linear')(x)
+    x = Dense(512, activation='linear')(x)
+    x = Dropout(0.2)(x)
+    x = Dense(2560, activation='relu')(x)
+    x = BatchNormalization()(x)
+    x = Reshape((5, 4, 128))(x)
+    x = Conv2DTranspose(128, (3, 3), strides=2, activation='relu')(x)
+    x = Conv2DTranspose(128, (3, 3), strides=2, activation='relu')(x)
+    x = Conv2DTranspose(64, (6, 3), strides=2, activation='relu')(x)
+    new_image = Conv2DTranspose(6*4, (7, 4), strides=2, activation='relu')(x)
+    model = Model(inputs=[image], outputs=[new_image])
+    model.compile(loss=min_mse, optimizer=Adam(lr=learning_rate, decay=decay))
+
+    return model
 
 
 def forward_model(learning_rate=0.001, decay=0.0):
@@ -39,7 +72,7 @@ def forward_model(learning_rate=0.001, decay=0.0):
         x = Conv2DTranspose(64, (6, 3), strides=2, activation='relu')(x)
         new_image = Conv2DTranspose(6, (7, 4), strides=2, activation='relu')(x)
         model = Model(inputs=[image, action], outputs=[new_image])
-        model.compile(loss=clipped_mse, optimizer=Adam(lr=learning_rate, decay=decay))
+        model.compile(loss=min_mse, optimizer=Adam(lr=learning_rate, decay=decay))
 
         return model
 

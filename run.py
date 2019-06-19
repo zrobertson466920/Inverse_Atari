@@ -85,15 +85,37 @@ def random_play(env):
     return rew_total
 
 
+def test():
+    for i in range(1):
+        episodes, n_actions = util.record_episode(env, num=5)
+        data, actions = util.inverse_data(episodes, n_actions)
+        print(len(data))
+        mu = np.mean(data, axis=0)
+        del episodes, n_actions
+        del data, actions
+        del mu
+
+
 if __name__ == '__main__':
 
     env = util.make_environment('BreakoutNoFrameskip-v4')
+    latent_model = models.latent_model(learning_rate=0.0001)
+    # 24 + 12
+    for k in range(3):
+        for i in range(6):
+            episodes, n_actions = util.record_episode(env,num = 2)
+            #episodes = util.load_episodes("/content/gdrive/My Drive/Colab Notebooks/Trained_Model/",
+            #                              list(range(2 * i, 2 * i + 2)))
+            data, actions, targets = util.forward_data(episodes)
+            latent_model.fit([(data - np.mean(data, axis=0)) / 255], np.moveaxis(np.repeat(np.array([targets]),4,axis = 0),0,-1), batch_size=16, epochs=1, validation_split=0.2,
+                        shuffle=True)
+            # f_model.fit([(data-np.mean(data,axis=0))/255,actions],[targets],batch_size = 64, epochs = 10, validation_split = 0.2, shuffle = True)
+            del data
+            del episodes
+            del actions
+            del targets
 
-    episodes, n_actions = util.record_episode(env, num=1)
-    data, actions = util.inverse_data(episodes, n_actions)
-    mu = np.mean(data, axis=0)
-
-    # Optionally load json and create model
+    '''# Optionally load json and create model
     load_model = True
     if load_model is True:
         json_file = open('Production_Models/final_i_model.json', 'r')
@@ -105,7 +127,7 @@ if __name__ == '__main__':
         print("Loaded model from disk")
 
         # View data and target to verify integrity
-        # validate_data(data[4], actions[4:])'''
+        # validate_data(data[4], actions[4:])
 
     # Optionally load json and create model
     load_model = True
@@ -119,7 +141,7 @@ if __name__ == '__main__':
         print("Loaded model from disk")
 
         # View data and target to verify integrity
-        # validate_data(data[4], actions[4:])'''
+        # validate_data(data[4], actions[4:])
 
     # Optionally load json and create model
     load_model = True
@@ -143,4 +165,4 @@ if __name__ == '__main__':
         print(np.mean(rew))
     env.close()
     print("Mean Reward: " + str(np.mean(rew)))
-    print("Median Reward: " + str(np.median(rew)))
+    print("Median Reward: " + str(np.median(rew)))'''

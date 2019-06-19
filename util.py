@@ -166,7 +166,6 @@ def forward_data(episodes, n_actions=4):
 
     return np.array(stacks), np.array(actions), np.array(targets)
 
-
 def inverse_data(episodes, n_actions=4):
     stacks = []
     actions = []
