@@ -17,9 +17,10 @@ def clipped_mse(y_true, y_pred):
 
 
 # Has not been tested
+# ...well actually it has the correct shape and reduces properly
+# Basically, I'm using a lambda function with tf to split my keras tensor
 def min_mse(y_true, y_pred):
-    #bad_way = K.permute_dimensions(tf.convert_to_tensor(Lambda(lambda tensor: tf.split(tensor, 6, axis = -1))(y_pred)),(1,2,3,0,4))
-    return K.min(K.mean(K.square(K.permute_dimensions(tf.convert_to_tensor(Lambda(lambda tensor: tf.split(tensor, 6, axis = -1))(y_pred)),(1,2,3,0,4)) - y_true),axis = (0,1,2,3)),keepdims = True)
+    return K.min(K.mean(K.square(y_pred - y_true),(0,1,2,3),keepdims = True))
 
 
 def latent_model(learning_rate=0.001, decay=0.0):
@@ -41,7 +42,10 @@ def latent_model(learning_rate=0.001, decay=0.0):
     x = Conv2DTranspose(128, (3, 3), strides=2, activation='relu')(x)
     x = Conv2DTranspose(128, (3, 3), strides=2, activation='relu')(x)
     x = Conv2DTranspose(64, (6, 3), strides=2, activation='relu')(x)
+    # Add a new dimension
+    # Then use broadcasting
     new_image = Conv2DTranspose(6*4, (7, 4), strides=2, activation='relu')(x)
+    new_image = Reshape((105,80,6,4))(new_image)
     model = Model(inputs=[image], outputs=[new_image])
     model.compile(loss=min_mse, optimizer=Adam(lr=learning_rate, decay=decay))
 
