@@ -100,6 +100,7 @@ if __name__ == '__main__':
 
     env = util.make_environment('BreakoutNoFrameskip-v4')
     latent_model = models.latent_model(learning_rate=0.0001)
+    action_model = models.action_model(learning_rate=0.0001)
     print(latent_model.summary())
     # 24 + 12
     for k in range(3):
@@ -108,7 +109,11 @@ if __name__ == '__main__':
             #episodes = util.load_episodes("/content/gdrive/My Drive/Colab Notebooks/Trained_Model/",
             #                              list(range(2 * i, 2 * i + 2)))
             data, actions, targets = util.forward_data(episodes)
-            latent_model.fit([(data - np.mean(data, axis=0)) / 255], [np.moveaxis(np.repeat(np.array([targets]),4,axis = 0),0,1),targets], batch_size=16, epochs=1, validation_split=0.2, shuffle=True)
+            #latent_model.fit([(data - np.mean(data, axis=0)) / 255], [np.moveaxis(np.repeat(np.array([targets]),4,axis = 0),0,1),targets], batch_size=16, epochs=1, validation_split=0.2, shuffle=True)
+            new_image, pred_image, action = latent_model.predict([(data - np.mean(data, axis=0)) / 255])
+            latent_actions = models.argmin_mse(new_image,np.moveaxis(np.repeat(np.array([targets]),4,axis = 0),0,1))
+            action_model.fit([(data - np.mean(data, axis=0)) / 255,latent_actions],actions, batch_size=16, epochs=1, validation_split=0.2, shuffle=True)
+
             #latent_model.fit([(data - np.mean(data, axis=0)) / 255],targets, batch_size=16, epochs=1,validation_split=0.2, shuffle=True)
             # f_model.fit([(data-np.mean(data,axis=0))/255,actions],[targets],batch_size = 64, epochs = 10, validation_split = 0.2, shuffle = True)
             del data

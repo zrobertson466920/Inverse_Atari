@@ -25,6 +25,11 @@ def min_mse(y_true, y_pred):
     return K.min(K.mean(K.square(y_pred - y_true),(0,1,2,3),keepdims = True))
 
 
+def argmin_mse(y_true, y_pred):
+    sess = tf.Session()
+    return K.argmin(K.mean(K.square(y_pred - y_true), (2, 3, 4), keepdims=True)[:,:,0,0,0],axis = 1).eval(session = sess)
+
+
 def w_sum(arg):
     return K.sum(arg[0] * K.tile(Reshape((4, 1, 1, 1))(arg[1]), (1, 1, 105, 80, 6)), axis=1)
 
@@ -35,6 +40,33 @@ def latent_acc(actions):
         return keras.metrics.categorical_accuracy(K.argmin(K.mean(K.square(y_pred - y_true), (0, 1, 2, 3), keepdims=True)),K.argmax(actions))
 
     return metric
+
+
+def action_model(learning_rate = 0.001, decay = 0.0):
+    image = Input(shape=(105, 80, 6), name='image')
+    l_action = Input(shape=(1,), name='l_action')
+    x = Conv2D(64, (4, 4), strides=2, activation='relu', input_shape=(105, 80, 12))(image)
+    x = Conv2D(128, (3, 3), strides=2, activation='relu')(x)
+    x = Conv2D(256, (3, 3), strides=2, activation='relu')(x)
+    x = Conv2D(256, (3, 3), strides=2, activation='relu')(x)
+    x = Flatten()(x)
+    x = Dropout(0.2)(x)
+    x = Dense(512, activation='relu')(x)
+    x = BatchNormalization()(x)
+    x = Dropout(0.2)(x)
+    x = Dense(256, activation='relu')(x)
+    y = Dense(256, activation='linear')(l_action)
+    x = multiply([x, y])
+    x = BatchNormalization()(x)
+    x = Dropout(0.2)(x)
+    x = Dense(64, activation='relu')(x)
+    x = BatchNormalization()(x)
+    x = Activation('sigmoid')(x)
+    action = Dense(4, activation='softmax')(x)
+    model = Model(inputs=[image,l_action], outputs=[action])
+    model.compile(loss='sparse_categorical_crossentropy', optimizer=Adam(lr=learning_rate, decay=decay),
+                  metrics=['accuracy'])
+    return model
 
 
 def latent_model(learning_rate=0.001, decay=0.0):
@@ -62,7 +94,7 @@ def latent_model(learning_rate=0.001, decay=0.0):
     new_image = Reshape((4,105,80,6),name = 'new_image')(x)
 
     # Latent Prediction
-    x = Conv2D(64, (4, 4), strides=2, activation='relu', input_shape=(105, 80, 12))(image)
+    x = Conv2D(64, (4, 4), strides=2, activation='relu', input_shape=(105, 80, 6))(image)
     x = Conv2D(128, (3, 3), strides=2, activation='relu')(x)
     x = Conv2D(256, (3, 3), strides=2, activation='relu')(x)
     x = Conv2D(256, (3, 3), strides=2, activation='relu')(x)
