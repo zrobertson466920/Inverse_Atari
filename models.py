@@ -69,13 +69,10 @@ def latent_model(learning_rate=0.001, decay=0.0):
     x = BatchNormalization()(x)
     x = Activation('sigmoid')(x)
     action = Dense(4, activation='softmax')(x)
-    #print(new_image.shape)
-    #print(K.tile(Reshape((4,1,1,1))(action),(1,1,105,80,6)).shape)
     pred_image = Lambda(w_sum)([new_image,action])
-    #print(pred_image.shape)
 
     model = Model(inputs=[image], outputs=[new_image,pred_image,action])
-    model.compile(loss=[min_mse,'mse',None], loss_weights = [0.5,0.5,0.0], optimizer=Adam(lr=learning_rate, decay=decay))
+    model.compile(loss=[min_mse,'mse','sparse_categorical_crossentropy'], loss_weights = [0.5,0.5,0.0], metrics = {'dense_8': 'accuracy'}, optimizer=Adam(lr=learning_rate, decay=decay))
 
     return model
 
