@@ -1,5 +1,6 @@
 # Keras
 import tensorflow as tf
+import keras
 from keras import Sequential, Model, Input
 from keras.utils import to_categorical
 from keras.layers import Dense, Flatten,multiply, Dropout, Reshape, Activation, Lambda, Dot
@@ -28,6 +29,14 @@ def w_sum(arg):
     return K.sum(arg[0] * K.tile(Reshape((4, 1, 1, 1))(arg[1]), (1, 1, 105, 80, 6)), axis=1)
 
 
+def latent_acc(actions):
+
+    def metric(y_true,y_pred):
+        return keras.metrics.categorical_accuracy(K.argmin(K.mean(K.square(y_pred - y_true), (0, 1, 2, 3), keepdims=True)),K.argmax(actions))
+
+    return metric
+
+
 def latent_model(learning_rate=0.001, decay=0.0):
 
     # Forward Prediction
@@ -50,7 +59,7 @@ def latent_model(learning_rate=0.001, decay=0.0):
     x = Conv2DTranspose(128, (3, 3), strides=2, activation='relu')(x)
     x = Conv2DTranspose(64, (6, 3), strides=2, activation='relu')(x)
     x = Conv2DTranspose(6*4, (7, 4), strides=2, activation='relu')(x)
-    new_image = Reshape((4,105,80,6))(x)
+    new_image = Reshape((4,105,80,6),name = 'new_image')(x)
 
     # Latent Prediction
     x = Conv2D(64, (4, 4), strides=2, activation='relu', input_shape=(105, 80, 12))(image)
@@ -68,11 +77,11 @@ def latent_model(learning_rate=0.001, decay=0.0):
     x = Dense(64, activation='relu')(x)
     x = BatchNormalization()(x)
     x = Activation('sigmoid')(x)
-    action = Dense(4, activation='softmax')(x)
+    action = Dense(4, activation='softmax', name = 'action')(x)
     pred_image = Lambda(w_sum)([new_image,action])
 
     model = Model(inputs=[image], outputs=[new_image,pred_image,action])
-    model.compile(loss=[min_mse,'mse','sparse_categorical_crossentropy'], loss_weights = [0.5,0.5,0.0], metrics = {'dense_8': 'accuracy'}, optimizer=Adam(lr=learning_rate, decay=decay))
+    model.compile(loss=[min_mse,'mse',None], loss_weights = [0.5,0.5,0.0], metrics = {'new_image': latent_acc(action)}, optimizer=Adam(lr=learning_rate, decay=decay))
 
     return model
 
