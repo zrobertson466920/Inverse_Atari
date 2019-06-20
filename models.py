@@ -28,7 +28,7 @@ def min_mse(y_true, y_pred):
 def argmin_mse(y_true, y_pred):
     sess = tf.Session()
     val = K.argmin(K.mean(K.square(y_pred - y_true), (2, 3, 4), keepdims=True)[:,:,0,0,0],axis = 1).eval(session = sess)
-    K.clear_session()
+    sess.close()
     return val
 
 

@@ -84,7 +84,7 @@ def random_play(env):
     env.close()
     return rew_total
 
-@profile
+
 def test():
     for k in range(1):
         for i in range(1):
