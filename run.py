@@ -84,33 +84,16 @@ def random_play(env):
     env.close()
     return rew_total
 
-
+@profile
 def test():
-    for i in range(1):
-        episodes, n_actions = util.record_episode(env, num=5)
-        data, actions = util.inverse_data(episodes, n_actions)
-        print(len(data))
-        mu = np.mean(data, axis=0)
-        del episodes, n_actions
-        del data, actions
-        del mu
-
-
-if __name__ == '__main__':
-
-    env = util.make_environment('BreakoutNoFrameskip-v4')
-    latent_model = models.latent_model(learning_rate=0.0001)
-    action_model = models.action_model(learning_rate=0.0001)
-    print(latent_model.summary())
-    # 24 + 12
-    for k in range(3):
-        for i in range(6):
+    for k in range(1):
+        for i in range(1):
             episodes, n_actions = util.record_episode(env,num = 2)
             #episodes = util.load_episodes("/content/gdrive/My Drive/Colab Notebooks/Trained_Model/",
             #                              list(range(2 * i, 2 * i + 2)))
             data, actions, targets = util.forward_data(episodes)
             #latent_model.fit([(data - np.mean(data, axis=0)) / 255], [np.moveaxis(np.repeat(np.array([targets]),4,axis = 0),0,1),targets], batch_size=16, epochs=1, validation_split=0.2, shuffle=True)
-            new_image, pred_image, action = latent_model.predict([(data - np.mean(data, axis=0)) / 255])
+            new_image, _, action = latent_model.predict([(data - np.mean(data, axis=0)) / 255])
             latent_actions = models.argmin_mse(new_image,np.moveaxis(np.repeat(np.array([targets]),4,axis = 0),0,1))
             action_model.fit([(data - np.mean(data, axis=0)) / 255,latent_actions],actions, batch_size=16, epochs=1, validation_split=0.2, shuffle=True)
 
@@ -120,6 +103,16 @@ if __name__ == '__main__':
             del episodes
             del actions
             del targets
+
+
+if __name__ == '__main__':
+
+    env = util.make_environment('BreakoutNoFrameskip-v4')
+    latent_model = models.latent_model(learning_rate=0.0001)
+    action_model = models.action_model(learning_rate=0.0001)
+    print(latent_model.summary())
+    # 24 + 12
+    test()
 
     '''# Optionally load json and create model
     load_model = True
