@@ -12,6 +12,8 @@ from keras.layers.normalization import BatchNormalization
 from keras import metrics
 from keras.models import model_from_json
 
+import numpy as np
+
 
 def clipped_mse(y_true, y_pred):
         return K.mean(K.maximum(K.square(y_pred - y_true), 10), axis=-1)
@@ -25,8 +27,9 @@ def min_mse(y_true, y_pred):
     return K.min(K.mean(K.square(y_pred - y_true),(0,1,2,3),keepdims = True))
 
 
+# Only take in numpy (conversions result in memory leaks)
 def argmin_mse(y_true, y_pred):
-    val = K.argmin(K.mean(K.square(y_pred - y_true), (2, 3, 4), keepdims=True)[:,:,0,0,0],axis = 1)
+    val = np.argmin(np.mean(np.square(y_pred - y_true), (2, 3, 4), keepdims=True),axis = 1)
     return val
 
 

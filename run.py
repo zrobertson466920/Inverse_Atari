@@ -84,25 +84,27 @@ def random_play(env):
     env.close()
     return rew_total
 
+@profile
+def predict(input):
+    return latent_model.predict(input)
 
+@profile
 def test():
     for k in range(1):
-        for i in range(1):
-            episodes, n_actions = util.record_episode(env,num = 2)
-            #episodes = util.load_episodes("/content/gdrive/My Drive/Colab Notebooks/Trained_Model/",
+        for i in range(5):
+            episodes, n_actions = util.record_episode(env, num=2)
+            # episodes = util.load_episodes("/content/gdrive/My Drive/Colab Notebooks/Trained_Model/",
             #                              list(range(2 * i, 2 * i + 2)))
             data, actions, targets = util.forward_data(episodes)
-            #latent_model.fit([(data - np.mean(data, axis=0)) / 255], [np.moveaxis(np.repeat(np.array([targets]),4,axis = 0),0,1),targets], batch_size=16, epochs=1, validation_split=0.2, shuffle=True)
-            new_image, _, action = latent_model.predict([(data - np.mean(data, axis=0)) / 255])
-            latent_actions = models.argmin_mse(new_image,np.moveaxis(np.repeat(np.array([targets]),4,axis = 0),0,1))
-            action_model.fit([(data - np.mean(data, axis=0)) / 255,latent_actions],actions, batch_size=16, epochs=1, validation_split=0.2, shuffle=True)
+            # latent_model.fit([(data - np.mean(data, axis=0)) / 255], [np.moveaxis(np.repeat(np.array([targets]),4,axis = 0),0,1),targets], batch_size=16, epochs=1, validation_split=0.2, shuffle=True)
+
+            new_image, _, action = predict([(data - np.mean(data, axis=0)) / 255])
+            temp = np.moveaxis(np.repeat(np.array([targets]), 4, axis=0), 0, 1)
+            latent_actions = models.argmin_mse(new_image,temp)
+            #action_model.fit([(data - np.mean(data, axis=0)) / 255,latent_actions],actions, batch_size=16, epochs=1, validation_split=0.2, shuffle=True)
 
             #latent_model.fit([(data - np.mean(data, axis=0)) / 255],targets, batch_size=16, epochs=1,validation_split=0.2, shuffle=True)
             # f_model.fit([(data-np.mean(data,axis=0))/255,actions],[targets],batch_size = 64, epochs = 10, validation_split = 0.2, shuffle = True)
-            del data
-            del episodes
-            del actions
-            del targets
 
 
 if __name__ == '__main__':
