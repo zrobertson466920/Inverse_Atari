@@ -15,6 +15,7 @@ from sklearn.preprocessing import normalize
 import matplotlib.pyplot as plt
 import tensorflow as tf
 from keras.models import model_from_json
+from keras.utils.np_utils import to_categorical
 
 import util
 import models
@@ -84,11 +85,11 @@ def random_play(env):
     env.close()
     return rew_total
 
-@profile
+
 def predict(input):
     return latent_model.predict(input)
 
-@profile
+
 def test():
     for k in range(1):
         for i in range(5):
@@ -96,13 +97,13 @@ def test():
             # episodes = util.load_episodes("/content/gdrive/My Drive/Colab Notebooks/Trained_Model/",
             #                              list(range(2 * i, 2 * i + 2)))
             data, actions, targets = util.forward_data(episodes)
-            # latent_model.fit([(data - np.mean(data, axis=0)) / 255], [np.moveaxis(np.repeat(np.array([targets]),4,axis = 0),0,1),targets], batch_size=16, epochs=1, validation_split=0.2, shuffle=True)
+            #latent_model.fit([(data - np.mean(data, axis=0)) / 255], [np.moveaxis(np.repeat(np.array([targets]),4,axis = 0),0,1),targets], batch_size=16, epochs=1, validation_split=0.2, shuffle=True)
 
             new_image, _, action = predict([(data - np.mean(data, axis=0)) / 255])
             temp = np.moveaxis(np.repeat(np.array([targets]), 4, axis=0), 0, 1)
             latent_actions = models.argmin_mse(new_image,temp)
-            #action_model.fit([(data - np.mean(data, axis=0)) / 255,latent_actions],actions, batch_size=16, epochs=1, validation_split=0.2, shuffle=True)
 
+            action_model.fit([(data - np.mean(data, axis=0)) / 255,to_categorical(latent_actions,num_classes=4)],to_categorical(actions,num_classes=4), batch_size=16, epochs=1, validation_split=0.2, shuffle=True)
             #latent_model.fit([(data - np.mean(data, axis=0)) / 255],targets, batch_size=16, epochs=1,validation_split=0.2, shuffle=True)
             # f_model.fit([(data-np.mean(data,axis=0))/255,actions],[targets],batch_size = 64, epochs = 10, validation_split = 0.2, shuffle = True)
 

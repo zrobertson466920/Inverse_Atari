@@ -14,6 +14,7 @@ from keras.models import model_from_json
 
 import numpy as np
 
+
 def clipped_mse(y_true, y_pred):
         return K.mean(K.maximum(K.square(y_pred - y_true), 10), axis=-1)
 
@@ -46,7 +47,7 @@ def latent_acc(actions):
 
 def action_model(learning_rate = 0.001, decay = 0.0):
     image = Input(shape=(105, 80, 6), name='image')
-    l_action = Input(shape=(1,), name='l_action')
+    l_action = Input(shape=(4,), name='l_action')
     x = Conv2D(64, (4, 4), strides=2, activation='relu', input_shape=(105, 80, 12))(image)
     x = Conv2D(128, (3, 3), strides=2, activation='relu')(x)
     x = Conv2D(256, (3, 3), strides=2, activation='relu')(x)
@@ -66,7 +67,7 @@ def action_model(learning_rate = 0.001, decay = 0.0):
     x = Activation('sigmoid')(x)
     action = Dense(4, activation='softmax')(x)
     model = Model(inputs=[image,l_action], outputs=[action])
-    model.compile(loss='sparse_categorical_crossentropy', optimizer=Adam(lr=learning_rate, decay=decay),
+    model.compile(loss='categorical_crossentropy', optimizer=Adam(lr=learning_rate, decay=decay),
                   metrics=['accuracy'])
     return model
 
@@ -115,14 +116,14 @@ def latent_model(learning_rate=0.001, decay=0.0):
     pred_image = Lambda(w_sum)([new_image,action])
 
     model = Model(inputs=[image], outputs=[new_image,pred_image,action])
-    model.compile(loss=[min_mse,'mse',None], loss_weights = [0.5,0.5,0.0], metrics = {'new_image': latent_acc(action)}, optimizer=Adam(lr=learning_rate, decay=decay))
+    model.compile(loss=[min_mse,clipped_mse,None], loss_weights = [0.5,0.5,0.0], metrics = {'new_image': latent_acc(action)}, optimizer=Adam(lr=learning_rate, decay=decay))
 
     return model
 
 
 def forward_model(learning_rate=0.001, decay=0.0):
         image = Input(shape=(105, 80, 6), name='image')
-        action = Input(shape=(1,), name='action')
+        action = Input(shape=(4,), name='action')
         x = Conv2D(64, (4, 4), strides=2, activation='relu', input_shape=(105, 80, 6))(image)
         x = Conv2D(128, (3, 3), strides=2, activation='relu')(x)
         x = Conv2D(128, (3, 3), strides=2, activation='relu')(x)
@@ -168,7 +169,7 @@ def inverse_model(learning_rate=0.001, decay=0.0):
         x = Activation('sigmoid')(x)
         action = Dense(4, activation='softmax')(x)
         model = Model(inputs=[image], outputs=[action])
-        model.compile(loss='sparse_categorical_crossentropy', optimizer=Adam(lr=learning_rate, decay=decay),
+        model.compile(loss='categorical_crossentropy', optimizer=Adam(lr=learning_rate, decay=decay),
                       metrics=['accuracy'])
         return model
 
@@ -192,6 +193,6 @@ def clone_model(learning_rate=0.001, decay=0.0):
         x = Activation('sigmoid')(x)
         action = Dense(4, activation='softmax')(x)
         model = Model(inputs=[image], outputs=[action])
-        model.compile(loss='sparse_categorical_crossentropy', optimizer=Adam(lr=learning_rate, decay=decay),
+        model.compile(loss='categorical_crossentropy', optimizer=Adam(lr=learning_rate, decay=decay),
                       metrics=['accuracy'])
         return model
