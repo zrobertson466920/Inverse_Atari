@@ -40,7 +40,8 @@ def w_sum(arg):
 def latent_cross(new_img,af_img):
 
     def metric(y_true,y_pred):
-        return K.categorical_crossentropy(K.cast(K.argmin(K.mean(K.square(new_img-af_img), (0, 1, 2, 3), keepdims=True)),dtype = 'float32'),y_pred)
+        val = K.cast(K.one_hot(K.argmin(K.mean(K.square(new_img-af_img), (2,3,4), keepdims=True)[:,:,0,0,0]),4),dtype = 'float32')
+        return K.categorical_crossentropy(val,y_pred)
 
     return metric
 
@@ -119,13 +120,12 @@ def latent_model(learning_rate=0.001, decay=0.0):
     x = BatchNormalization()(x)
     x = Dropout(0.2)(x)
     x = Dense(64, activation='relu')(x)
-    x = BatchNormalization()(x)
     x = Activation('sigmoid')(x)
     action = Dense(4, activation='softmax', name = 'action')(x)
     #pred_image = Lambda(w_sum, name = 'pred_image')([new_image,action])
 
     model = Model(inputs=[image,after_image], outputs=[new_image,action])
-    model.compile(loss=[min_mse,latent_cross(new_image,after_image)], loss_weights = [0.01,0.99], metrics = {'action': latent_acc(new_image,after_image)}, optimizer=Adam(lr=learning_rate, decay=decay))
+    model.compile(loss=[min_mse,latent_cross(new_image,after_image)], loss_weights = [0.001,0.999], metrics = {'action': latent_acc(new_image,after_image)}, optimizer=Adam(lr=learning_rate, decay=decay))
 
     return model
 
