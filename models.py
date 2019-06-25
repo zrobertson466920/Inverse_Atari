@@ -49,7 +49,10 @@ def latent_cross(new_img,af_img):
 def latent_acc(new_img,af_img):
 
     def metric(y_true,y_pred):
-        return keras.metrics.categorical_accuracy(K.argmin(K.mean(K.square(new_img-af_img), (0, 1, 2, 3), keepdims=True)),y_pred)
+        val = K.cast(
+            K.one_hot(K.argmin(K.mean(K.square(new_img - af_img), (2, 3, 4), keepdims=True)[:, :, 0, 0, 0]), 4),
+            dtype='float32')
+        return keras.metrics.categorical_accuracy(val, y_pred)
 
     return metric
 
