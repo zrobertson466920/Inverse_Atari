@@ -37,10 +37,18 @@ def w_sum(arg):
     return K.sum(arg[0] * K.tile(Reshape((4, 1, 1, 1))(arg[1]), (1, 1, 105, 80, 6)), axis=1)
 
 
-def latent_acc(actions):
+def latent_cross(new_img,af_img):
 
     def metric(y_true,y_pred):
-        return keras.metrics.categorical_accuracy(K.argmin(K.mean(K.square(y_pred - y_true), (0, 1, 2, 3), keepdims=True)),K.argmax(actions))
+        return K.categorical_crossentropy(K.cast(K.argmin(K.mean(K.square(new_img-af_img), (0, 1, 2, 3), keepdims=True)),dtype = 'float32'),y_pred)
+
+    return metric
+
+
+def latent_acc(new_img,af_img):
+
+    def metric(y_true,y_pred):
+        return keras.metrics.categorical_accuracy(K.argmin(K.mean(K.square(new_img-af_img), (0, 1, 2, 3), keepdims=True)),y_pred)
 
     return metric
 
@@ -76,6 +84,7 @@ def latent_model(learning_rate=0.001, decay=0.0):
 
     # Forward Prediction
     image = Input(shape=(105, 80, 6), name='image')
+    after_image = Input(shape = (4,105,80,6), name = 'after_image')
     x = Conv2D(64, (4, 4), strides=2, activation='relu', input_shape=(105, 80, 6))(image)
     x = Conv2D(128, (3, 3), strides=2, activation='relu')(x)
     x = Conv2D(128, (3, 3), strides=2, activation='relu')(x)
@@ -113,10 +122,10 @@ def latent_model(learning_rate=0.001, decay=0.0):
     x = BatchNormalization()(x)
     x = Activation('sigmoid')(x)
     action = Dense(4, activation='softmax', name = 'action')(x)
-    pred_image = Lambda(w_sum)([new_image,action])
+    pred_image = Lambda(w_sum, name = 'pred_image')([new_image,action])
 
-    model = Model(inputs=[image], outputs=[new_image,pred_image,action])
-    model.compile(loss=[min_mse,clipped_mse,None], loss_weights = [0.5,0.5,0.0], metrics = {'new_image': latent_acc(action)}, optimizer=Adam(lr=learning_rate, decay=decay))
+    model = Model(inputs=[image,after_image], outputs=[new_image,pred_image,action])
+    model.compile(loss=[min_mse,clipped_mse,latent_cross(new_image,after_image)], loss_weights = [0.5,0,0.5], metrics = {'action': latent_acc(new_image,after_image)}, optimizer=Adam(lr=learning_rate, decay=decay))
 
     return model
 
