@@ -218,7 +218,7 @@ if __name__ == '__main__':
         print("Loaded model from disk")
 
     # Optionally load json and create model
-    load_model = True
+    load_model = False
     if load_model is True:
         json_file = open('Test_Models/latent_model.json', 'r')
         loaded_model_json = json_file.read()

@@ -24,7 +24,7 @@ def clipped_mse(y_true, y_pred):
 # Basically, I'm using a lambda function with tf to split my keras tensor
 def min_mse(y_true, y_pred):
     #bad_way = K.permute_dimensions(tf.convert_to_tensor(Lambda(lambda tensor: tf.split(tensor, 6, axis = -1))(y_pred)),(1,2,3,0,4))
-    return K.min(K.mean(K.square(y_pred - y_true),(0,1,2,3),keepdims = True))
+    return K.min(K.mean(K.square(y_pred - y_true),(2,3,4),keepdims = True))
 
 
 # Only takes in numpy (conversions result in memory leak)
