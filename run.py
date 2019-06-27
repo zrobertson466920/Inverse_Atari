@@ -105,7 +105,7 @@ def latent_play(env, latent_model, action_model, mean):
                     lives = t_lives
                     t_lives = info['ale.lives']
             else:
-                latent_action = latent_model.predict([(np.array([np.concatenate(frames[-2:], axis=2)]) - mean) / 255.0, np.zeros((1,4,105,80,6))])[1]
+                latent_action = latent_model.predict([(np.array([np.concatenate(frames[-2:], axis=2)]) - mean) / 255.0, np.zeros((1,4,105,80,6)), np.zeros((1,1))])[1]
                 print(latent_model.predict([(np.array([np.concatenate(frames[-2:], axis=2)]) - mean) / 255.0, np.zeros((1,4,105,80,6)), np.zeros((1,1))])[1])
                 dist = action_model.predict([(np.array([np.concatenate(frames[-2:], axis=2)]) - mean) / 255.0,
                                              latent_action])[0]

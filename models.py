@@ -33,6 +33,11 @@ def temp_mse(noise):
     return min_mse
 
 
+def min_mse(y_true, y_pred):
+    dist = K.mean(K.square(y_pred - y_true),(2,3,4),keepdims = True)[:,:,0,0,0]
+    return K.min(dist,axis = 1)
+
+
 # Only takes in numpy (conversions result in memory leak)
 def argmin_mse(y_true, y_pred):
     val = np.argmin(np.mean(np.square(y_pred - y_true), (2, 3, 4), keepdims=True)[:,:,0,0,0],axis = 1)
@@ -46,7 +51,7 @@ def w_sum(arg):
 def latent_cross(new_img,af_img):
 
     def metric(y_true,y_pred):
-        val = K.cast(K.one_hot(K.argmin(K.mean(K.square(new_img-af_img), (2,3,4), keepdims=True)[:,:,0,0,0]),4),dtype = 'float32')
+        val = K.cast(K.one_hot(K.argmin(K.mean(K.square(new_img-af_img), (2,3,4), keepdims=True)[:,:,0,0,0],axis = 1),4),dtype ='float32')
         return K.categorical_crossentropy(val,y_pred)
 
     return metric
@@ -55,8 +60,8 @@ def latent_cross(new_img,af_img):
 def latent_acc(new_img,af_img):
 
     def metric(y_true,y_pred):
-        val = K.one_hot(K.argmin(K.mean(K.square(new_img-af_img), (2,3,4), keepdims=True)[:,:,0,0,0]),4)
-        return keras.metrics.categorical_accuracy(val,K.one_hot(K.argmin(y_pred),4))
+        val = K.one_hot(K.argmin(K.mean(K.square(new_img-af_img), (2,3,4), keepdims=True)[:,:,0,0,0],axis = 1),4)
+        return keras.metrics.categorical_accuracy(val,K.one_hot(K.argmin(y_pred,axis = 1),4))
 
     return metric
 
@@ -133,7 +138,7 @@ def latent_model(learning_rate=0.001, decay=0.0):
     #pred_image = Lambda(w_sum, name = 'pred_image')([new_image,action])
 
     model = Model(inputs=[image,after_image,param], outputs=[new_image,action])
-    model.compile(loss=[temp_mse(param[0]),latent_cross(new_image,after_image)], loss_weights = [0.9,0.1], metrics = {'action': latent_acc(new_image,after_image)}, optimizer=Adam(lr=learning_rate, decay=decay))
+    model.compile(loss=['mse',latent_cross(new_image,after_image)], loss_weights = [0.1,0.9], metrics = {'action': latent_acc(new_image,after_image)}, optimizer=Adam(lr=learning_rate, decay=decay))
 
     return model
 
