@@ -23,11 +23,11 @@ def clipped_mse(y_true, y_pred):
 # Has not been tested
 # ...well actually it has the correct shape and reduces properly
 # Basically, I'm using a lambda function with tf to split my keras tensor
-def temp_mse(temp):
+def temp_mse(noise):
 
     def min_mse(y_true, y_pred):
         dist = K.mean(K.square(y_pred - y_true),(2,3,4),keepdims = True)[:,:,0,0,0]
-        dist = dist**(1/temp)
+        dist = dist / K.sum(dist) + K.random_uniform((4,),minval = -noise, maxval = noise)
         return K.min(K.mean(K.square(y_pred - y_true),(2,3,4),keepdims = True)[:,:,0,0,0],axis = 1)
 
     return min_mse
