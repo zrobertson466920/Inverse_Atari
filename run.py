@@ -16,6 +16,7 @@ import matplotlib.pyplot as plt
 import tensorflow as tf
 from keras.models import model_from_json
 from keras.utils.np_utils import to_categorical
+from keras.backend import set_value
 
 import util
 import models
@@ -105,7 +106,7 @@ def latent_play(env, latent_model, action_model, mean):
                     t_lives = info['ale.lives']
             else:
                 latent_action = latent_model.predict([(np.array([np.concatenate(frames[-2:], axis=2)]) - mean) / 255.0, np.zeros((1,4,105,80,6))])[1]
-                print(latent_model.predict([(np.array([np.concatenate(frames[-2:], axis=2)]) - mean) / 255.0, np.zeros((1,4,105,80,6))])[1])
+                print(latent_model.predict([(np.array([np.concatenate(frames[-2:], axis=2)]) - mean) / 255.0, np.zeros((1,4,105,80,6)), np.zeros((1,1))])[1])
                 dist = action_model.predict([(np.array([np.concatenate(frames[-2:], axis=2)]) - mean) / 255.0,
                                              latent_action])[0]
                 dist /= np.sum(dist)
@@ -191,7 +192,7 @@ def test(env):
             # episodes = util.load_episodes("/content/gdrive/My Drive/Colab Notebooks/Trained_Model/",
             #                              list(range(2 * i, 2 * i + 2)))
             data, actions, targets = util.forward_data(episodes)
-            latent_model.fit([(data - np.mean(data, axis=0)) / 255,np.moveaxis(np.repeat(np.array([targets]),4,axis = 0),0,1)], [np.moveaxis(np.repeat(np.array([targets]),4,axis = 0),0,1),actions], batch_size=16, epochs=1, validation_split=0.2, shuffle=True)
+            latent_model.fit([(data - np.mean(data, axis=0)) / 255,np.moveaxis(np.repeat(np.array([targets]),4,axis = 0),0,1),np.full((len(data),1),10)], [np.moveaxis(np.repeat(np.array([targets]),4,axis = 0),0,1),actions], batch_size=16, epochs=1, validation_split=0.2, shuffle=True)
 
             #new_image, _, action = predict([(data - np.mean(data, axis=0)) / 255])
             #temp = np.moveaxis(np.repeat(np.array([targets]), 4, axis=0), 0, 1)
@@ -205,6 +206,8 @@ def test(env):
 if __name__ == '__main__':
 
     env = util.make_environment('BreakoutNoFrameskip-v4')
+
+    test(env)
 
     # Optionally load json and create model
     load_model = True

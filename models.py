@@ -9,6 +9,7 @@ from keras.optimizers import Adam
 from keras import backend as K
 from keras.preprocessing.image import ImageDataGenerator
 from keras.layers.normalization import BatchNormalization
+from keras.callbacks import Callback
 from keras import metrics
 from keras.models import model_from_json
 
@@ -22,9 +23,14 @@ def clipped_mse(y_true, y_pred):
 # Has not been tested
 # ...well actually it has the correct shape and reduces properly
 # Basically, I'm using a lambda function with tf to split my keras tensor
-def min_mse(y_true, y_pred):
-    #bad_way = K.permute_dimensions(tf.convert_to_tensor(Lambda(lambda tensor: tf.split(tensor, 6, axis = -1))(y_pred)),(1,2,3,0,4))
-    return K.min(K.mean(K.square(y_pred - y_true),(2,3,4),keepdims = True))
+def temp_mse(temp):
+
+    def min_mse(y_true, y_pred):
+        dist = K.mean(K.square(y_pred - y_true),(2,3,4),keepdims = True)[:,:,0,0,0]
+        dist = dist**(1/temp)
+        return K.min(K.mean(K.square(y_pred - y_true),(2,3,4),keepdims = True)[:,:,0,0,0],axis = 1)
+
+    return min_mse
 
 
 # Only takes in numpy (conversions result in memory leak)
@@ -87,6 +93,7 @@ def latent_model(learning_rate=0.001, decay=0.0):
     # Forward Prediction
     image = Input(shape=(105, 80, 6), name='image')
     after_image = Input(shape = (4,105,80,6), name = 'after_image')
+    param = Input(shape = (1,), name = 'param')
     x = Conv2D(64, (4, 4), strides=2, activation='relu', input_shape=(105, 80, 6))(image)
     x = Conv2D(128, (3, 3), strides=2, activation='relu')(x)
     x = Conv2D(128, (3, 3), strides=2, activation='relu')(x)
@@ -125,8 +132,8 @@ def latent_model(learning_rate=0.001, decay=0.0):
     action = Dense(4, activation='softmax', name = 'action')(x)
     #pred_image = Lambda(w_sum, name = 'pred_image')([new_image,action])
 
-    model = Model(inputs=[image,after_image], outputs=[new_image,action])
-    model.compile(loss=[min_mse,latent_cross(new_image,after_image)], loss_weights = [0.9,0.1], metrics = {'action': latent_acc(new_image,after_image)}, optimizer=Adam(lr=learning_rate, decay=decay))
+    model = Model(inputs=[image,after_image,param], outputs=[new_image,action])
+    model.compile(loss=[temp_mse(param[0]),latent_cross(new_image,after_image)], loss_weights = [0.9,0.1], metrics = {'action': latent_acc(new_image,after_image)}, optimizer=Adam(lr=learning_rate, decay=decay))
 
     return model
 
