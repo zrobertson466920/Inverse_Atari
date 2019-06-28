@@ -38,6 +38,14 @@ def min_mse(y_true, y_pred):
     return K.min(dist,axis = 1)
 
 
+def p_mse(a_image,p_image):
+
+    def loss(y_true,y_pred):
+        return keras.losses.mse(a_image[:,0,:,:,:],p_image)
+
+    return loss
+
+
 # Only takes in numpy (conversions result in memory leak)
 def argmin_mse(y_true, y_pred):
     val = np.argmin(np.mean(np.square(y_pred - y_true), (2, 3, 4), keepdims=True)[:,:,0,0,0],axis = 1)
@@ -133,10 +141,10 @@ def latent_model(learning_rate=0.001, decay=0.0):
     x = Dense(64, activation='relu')(x)
     x = Activation('sigmoid')(x)
     action = Dense(4, activation='softmax', name = 'action')(x)
-    #pred_image = Lambda(w_sum, name = 'pred_image')([new_image,action])
+    pred_image = Lambda(w_sum, name = 'pred_image')([new_image,action])
 
     model = Model(inputs=[image,after_image], outputs=[new_image,action])
-    model.compile(loss=[min_mse,latent_cross(new_image,after_image)], loss_weights = [0.9,0.1], metrics = {'action': latent_acc(new_image,after_image)}, optimizer=Adam(lr=learning_rate, decay=decay))
+    model.compile(loss=[min_mse,p_mse(after_image,pred_image)], loss_weights = [0.5,0.5], metrics = {'action': latent_acc(new_image,after_image)}, optimizer=Adam(lr=learning_rate, decay=decay))
 
     return model
 
