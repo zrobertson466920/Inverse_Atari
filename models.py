@@ -98,7 +98,6 @@ def latent_model(learning_rate=0.001, decay=0.0):
     # Forward Prediction
     image = Input(shape=(105, 80, 6), name='image')
     after_image = Input(shape = (4,105,80,6), name = 'after_image')
-    param = Input(shape = (1,), name = 'param')
     x = Conv2D(64, (4, 4), strides=2, activation='relu', input_shape=(105, 80, 6))(image)
     x = Conv2D(128, (3, 3), strides=2, activation='relu')(x)
     x = Conv2D(128, (3, 3), strides=2, activation='relu')(x)
@@ -137,8 +136,8 @@ def latent_model(learning_rate=0.001, decay=0.0):
     action = Dense(4, activation='softmax', name = 'action')(x)
     #pred_image = Lambda(w_sum, name = 'pred_image')([new_image,action])
 
-    model = Model(inputs=[image,after_image,param], outputs=[new_image,action])
-    model.compile(loss=[min_mse,latent_cross(new_image,after_image)], loss_weights = [0.01,0.99], metrics = {'action': latent_acc(new_image,after_image)}, optimizer=Adam(lr=learning_rate, decay=decay))
+    model = Model(inputs=[image,after_image], outputs=[new_image,action])
+    model.compile(loss=[min_mse,latent_cross(new_image,after_image)], loss_weights = [0.003,0.997], metrics = {'action': latent_acc(new_image,after_image)}, optimizer=Adam(lr=learning_rate, decay=decay))
 
     return model
 
