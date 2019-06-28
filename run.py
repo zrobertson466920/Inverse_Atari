@@ -192,7 +192,7 @@ def test(env):
             # episodes = util.load_episodes("/content/gdrive/My Drive/Colab Notebooks/Trained_Model/",
             #                              list(range(2 * i, 2 * i + 2)))
             data, actions, targets = util.forward_data(episodes)
-            latent_model.fit([(data - np.mean(data, axis=0)) / 255,np.moveaxis(np.repeat(np.array([targets]),4,axis = 0),0,1),np.full((len(data),1),1)], [np.moveaxis(np.repeat(np.array([targets]),4,axis = 0),0,1),actions], batch_size=16, epochs=1, validation_split=0.2, shuffle=True)
+            latent_model.fit([(data - np.mean(data, axis=0)) / 255,np.moveaxis(np.repeat(np.array([targets]),4,axis = 0),0,1)], [np.moveaxis(np.repeat(np.array([targets]),4,axis = 0),0,1),actions], batch_size=16, epochs=1, validation_split=0.2, shuffle=True)
 
             #new_image, _, action = predict([(data - np.mean(data, axis=0)) / 255])
             #temp = np.moveaxis(np.repeat(np.array([targets]), 4, axis=0), 0, 1)

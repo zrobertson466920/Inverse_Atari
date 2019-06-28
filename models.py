@@ -60,8 +60,8 @@ def latent_cross(new_img,af_img):
 def latent_acc(new_img,af_img):
 
     def metric(y_true,y_pred):
-        val = K.one_hot(K.argmin(K.mean(K.square(new_img-af_img), (2,3,4), keepdims=True)[:,:,0,0,0],axis = 1),4)
-        return keras.metrics.categorical_accuracy(val,K.one_hot(K.argmin(y_pred,axis = 1),4))
+        val = K.cast(K.one_hot(K.argmin(K.mean(K.square(new_img - af_img), (2, 3, 4), keepdims=True)[:, :, 0, 0, 0], axis=1),4),dtype = 'float32')
+        return keras.metrics.categorical_accuracy(val, K.argmax(y_pred,axis = 1))
 
     return metric
 
@@ -84,7 +84,6 @@ def action_model(learning_rate = 0.001, decay = 0.0):
     x = BatchNormalization()(x)
     x = Dropout(0.2)(x)
     x = Dense(64, activation='relu')(x)
-    x = BatchNormalization()(x)
     x = Activation('sigmoid')(x)
     action = Dense(4, activation='softmax')(x)
     model = Model(inputs=[image,l_action], outputs=[action])
@@ -137,7 +136,7 @@ def latent_model(learning_rate=0.001, decay=0.0):
     #pred_image = Lambda(w_sum, name = 'pred_image')([new_image,action])
 
     model = Model(inputs=[image,after_image], outputs=[new_image,action])
-    model.compile(loss=[min_mse,latent_cross(new_image,after_image)], loss_weights = [0.003,0.997], metrics = {'action': latent_acc(new_image,after_image)}, optimizer=Adam(lr=learning_rate, decay=decay))
+    model.compile(loss=[min_mse,latent_cross(new_image,after_image)], loss_weights = [0.9,0.1], metrics = {'action': latent_acc(new_image,after_image)}, optimizer=Adam(lr=learning_rate, decay=decay))
 
     return model
 
