@@ -144,7 +144,7 @@ def latent_model(learning_rate=0.001, decay=0.0):
     pred_image = Lambda(w_sum, name = 'pred_image')([new_image,action])
 
     model = Model(inputs=[image,after_image], outputs=[new_image,action])
-    model.compile(loss=[min_mse,p_mse(after_image,pred_image)], loss_weights = [0.5,0.5], metrics = {'action': latent_acc(new_image,after_image)}, optimizer=Adam(lr=learning_rate, decay=decay))
+    model.compile(loss=[min_mse,p_mse(after_image,pred_image)], loss_weights = [1.0,1.0], metrics = {'action': latent_acc(new_image,after_image)}, optimizer=Adam(lr=learning_rate, decay=decay))
 
     return model
 
