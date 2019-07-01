@@ -68,8 +68,6 @@ def latent_cross(new_img,af_img):
 def latent_acc(new_img,af_img):
 
     def metric(y_true,y_pred):
-        #val = K.cast(K.one_hot(K.argmin(K.mean(K.square(new_img - af_img), (2, 3, 4), keepdims=True)[:, :, 0, 0, 0], axis=1),4),dtype = 'float32')
-        #return keras.metrics.categorical_accuracy(val, K.argmax(y_pred,axis = 1))
         val = K.cast(K.argmin(K.mean(np.square(new_img - af_img), (2, 3, 4), keepdims=True)[:, :, 0, 0, 0], axis=1),dtype = 'float32')
         return keras.metrics.sparse_categorical_accuracy(val,y_pred)
 
@@ -146,7 +144,7 @@ def latent_model(learning_rate=0.001, decay=0.0):
     pred_image = Lambda(w_sum, name = 'pred_image')([new_image,action])
 
     model = Model(inputs=[image,after_image], outputs=[new_image,action])
-    model.compile(loss=[min_mse,p_mse(after_image,pred_image)], loss_weights = [1.0,1.0], metrics = {'action': latent_acc(new_image,after_image)}, optimizer=Adam(lr=learning_rate, decay=decay))
+    model.compile(loss=[min_mse,latent_cross(new_image,after_image)], loss_weights = [1.0,1.0], metrics = {'action': latent_acc(new_image,after_image)}, optimizer=Adam(lr=learning_rate, decay=decay))
 
     return model
 
