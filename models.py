@@ -34,7 +34,7 @@ def temp_mse(noise):
 
 
 def min_mse(y_true, y_pred):
-    dist = K.mean(K.square(y_pred - y_true),(2,3,4),keepdims = True)[:,:,0,0,0]
+    dist = K.mean(K.maximum(K.square(y_pred - y_true),10),(2,3,4),keepdims = True)[:,:,0,0,0]
     return K.min(dist,axis = 1)
 
 
