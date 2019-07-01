@@ -183,16 +183,20 @@ def production_run(env):
 
 
 def test(env):
-    latent_model = models.latent_model(learning_rate=0.0001)
-    action_model = models.action_model(learning_rate=0.0001)
-    print(latent_model.summary())
+    l_model = models.latent_model(learning_rate=0.0001)
+    a_model = models.action_model(learning_rate=0.0001)
+    #print(l_model.summary())
     for k in range(1):
-        for i in range(5):
+        for i in range(1):
             episodes, n_actions = util.record_episode(env, num=2)
             # episodes = util.load_episodes("/content/gdrive/My Drive/Colab Notebooks/Trained_Model/",
             #                              list(range(2 * i, 2 * i + 2)))
             data, actions, targets = util.forward_data(episodes)
-            latent_model.fit([(data - np.mean(data, axis=0)) / 255,np.moveaxis(np.repeat(np.array([targets]),4,axis = 0),0,1)], [np.moveaxis(np.repeat(np.array([targets]),4,axis = 0),0,1),actions], batch_size=16, epochs=1, validation_split=0.2, shuffle=True)
+            l_model.fit([(data - np.mean(data, axis=0)) / 255,np.moveaxis(np.repeat(np.array([targets]),4,axis = 0),0,1)], [np.moveaxis(np.repeat(np.array([targets]),4,axis = 0),0,1),actions], batch_size=16, epochs=1, validation_split=0.2, shuffle=True)
+            pred_image, latent_actions = l_model.predict([(data - np.mean(data, axis=0))[0:10] / 255, np.moveaxis(np.repeat(np.array([targets[0:10]]), 4, axis=0), 0, 1)])
+            print(pred_image.shape)
+            print(targets.shape)
+            print(np.mean(np.square(pred_image - np.moveaxis(np.repeat(np.array([targets[0:10]]), 4, axis=0), 0, 1)),(2, 3, 4), keepdims=True)[:, :, 0, 0, 0])
 
             #new_image, _, action = predict([(data - np.mean(data, axis=0)) / 255])
             #temp = np.moveaxis(np.repeat(np.array([targets]), 4, axis=0), 0, 1)
