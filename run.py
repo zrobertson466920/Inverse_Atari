@@ -105,12 +105,12 @@ def latent_play(env, latent_model, action_model, mean):
                     lives = t_lives
                     t_lives = info['ale.lives']
             else:
-                latent_action = latent_model.predict([(np.array([np.concatenate(frames[-2:], axis=2)]) - mean) / 255.0, np.zeros((1,4,105,80,6)), np.zeros((1,1))])[1]
-                print(latent_model.predict([(np.array([np.concatenate(frames[-2:], axis=2)]) - mean) / 255.0, np.zeros((1,4,105,80,6)), np.zeros((1,1))])[1])
-                dist = action_model.predict([(np.array([np.concatenate(frames[-2:], axis=2)]) - mean) / 255.0,
+                latent_action = latent_model.predict([np.array([np.concatenate(frames[-2:], axis=2)]), np.zeros((1,4,105,80,6))])[1]
+                print(np.argmin(latent_action))
+                dist = action_model.predict([np.array([np.concatenate(frames[-2:], axis=2)]),
                                              latent_action])[0]
                 dist /= np.sum(dist)
-                print(dist)
+                print(np.argmin(dist))
                 action = np.random.choice([0, 1, 2, 3], 1, p=dist)[0]
                 frame, rew, done, info = env.step(action)
                 rew_total += rew
@@ -218,23 +218,23 @@ if __name__ == '__main__':
     # Optionally load json and create model
     load_model = True
     if load_model is True:
-        json_file = open('Test_Models/a_model.json', 'r')
+        json_file = open('Test_Models/final_a_model.json', 'r')
         loaded_model_json = json_file.read()
         json_file.close()
         action_model = model_from_json(loaded_model_json)
         # load weights into new model
-        action_model.load_weights("Test_Models/a_model.h5")
+        action_model.load_weights("Test_Models/final_a_model.h5")
         print("Loaded model from disk")
 
     # Optionally load json and create model
     load_model = False
     if load_model is True:
-        json_file = open('Test_Models/latent_model.json', 'r')
+        json_file = open('Test_Models/final_l_model.json', 'r')
         loaded_model_json = json_file.read()
         json_file.close()
         latent_model = model_from_json(loaded_model_json)
         # load weights into new model
-        latent_model.load_weights("Test_Models/latent_model.h5")
+        latent_model.load_weights("Test_Models/final_l_model.h5")
         print("Loaded model from disk")
     else:
         latent_model = models.latent_model(learning_rate=0.0001)
