@@ -184,22 +184,23 @@ def production_run(env):
 
 def test(env):
     l_model = models.latent_model(learning_rate=0.0001)
-    a_model = models.action_model(learning_rate=0.0001)
-    #print(l_model.summary())
+    m_model = models.modal_model(learning_rate=0.0001)
     for k in range(1):
         for i in range(3):
             episodes, n_actions = util.record_episode(env, num=2)
             # episodes = util.load_episodes("/content/gdrive/My Drive/Colab Notebooks/Trained_Model/",
             #                              list(range(2 * i, 2 * i + 2)))
             data, actions, targets = util.forward_data(episodes)
-            l_model.fit([data,np.moveaxis(np.repeat(np.array([targets-data]),4,axis = 0),0,1)], [np.moveaxis(np.repeat(np.array([targets-data]),4,axis = 0),0,1),actions], batch_size=16, epochs=1, validation_split=0.2, shuffle=True)
-            pred_image, latent_actions = l_model.predict([data[10:20], np.moveaxis(np.repeat(np.array([targets[0:10]-data[10:20]]), 4, axis=0), 0, 1)])
+            m_model.fit([data], [np.moveaxis(np.repeat(np.array([targets-data]),4,axis = 0),0,1)], batch_size=16, epochs=1, validation_split=0.2, shuffle=True)
+            pred_image = m_model.predict([data])
+            latent_actions = models.argmin_mse(pred_image,np.moveaxis(np.repeat(np.array([targets - data]), 4, axis=0), 0, 1))
+            l_model.fit([data], [to_categorical(latent_actions)], class_weight = 'auto', batch_size=16, epochs=1, validation_split=0.2, shuffle=True)
             print(pred_image.shape)
             print(targets.shape)
-            print(np.mean(np.square(pred_image - np.moveaxis(np.repeat(np.array([targets[10:20]]), 4, axis=0), 0, 1)),(2, 3, 4), keepdims=True)[:, :, 0, 0, 0])
-            for i in range(4):
-                plt.imshow(np.ndarray.astype(pred_image[5][i][:, :, 3:6], dtype='uint8'))
-                plt.show()
+            print(np.mean(np.square(pred_image - np.moveaxis(np.repeat(np.array([targets]), 4, axis=0), 0, 1)),(2, 3, 4), keepdims=True)[:, :, 0, 0, 0])
+            #for i in range(4):
+            #    plt.imshow(np.ndarray.astype(pred_image[5][i][:, :, 3:6], dtype='uint8'))
+            #    plt.show()
             #new_image, _, action = predict([(data - np.mean(data, axis=0)) / 255])
             #temp = np.moveaxis(np.repeat(np.array([targets]), 4, axis=0), 0, 1)
             #latent_actions = models.argmin_mse(new_image,temp)

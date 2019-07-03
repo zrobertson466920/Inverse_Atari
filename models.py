@@ -101,7 +101,7 @@ def action_model(learning_rate = 0.001, decay = 0.0):
     return model
 
 
-def latent_model(learning_rate=0.001, decay=0.0):
+def modal_model(learning_rate=0.001, decay=0.0):
 
     # Forward Prediction
     image = Input(shape=(105, 80, 6), name='image')
@@ -126,7 +126,16 @@ def latent_model(learning_rate=0.001, decay=0.0):
     x = Conv2DTranspose(6*4, (7, 4), strides=2, activation='relu')(x)
     new_image = Reshape((4,105,80,6),name = 'new_image')(x)
 
+    model = Model(inputs=[image], outputs=[new_image])
+    model.compile(loss=[min_mse], loss_weights=[1.0], optimizer=Adam(lr=learning_rate, decay=decay))
+
+    return model
+
+
+def latent_model(learning_rate = 0.001, decay = 0.0):
+
     # Latent Prediction
+    image = Input(shape=(105, 80, 6), name='image')
     x = Conv2D(64, (4, 4), strides=2, activation='relu', input_shape=(105, 80, 6))(image)
     x = Conv2D(128, (3, 3), strides=2, activation='relu')(x)
     x = Conv2D(256, (3, 3), strides=2, activation='relu')(x)
@@ -142,10 +151,9 @@ def latent_model(learning_rate=0.001, decay=0.0):
     x = Dense(64, activation='relu')(x)
     x = Activation('sigmoid')(x)
     action = Dense(4, activation='softmax', name = 'action')(x)
-    pred_image = Lambda(w_sum, name = 'pred_image')([new_image,action])
 
-    model = Model(inputs=[image,after_image], outputs=[new_image,action])
-    model.compile(loss=[min_mse,latent_cross(new_image,after_image)], loss_weights = [1.0,1.0], metrics = {'action': latent_acc(new_image,after_image)}, optimizer=Adam(lr=learning_rate, decay=decay))
+    model = Model(inputs=[image], outputs=[action])
+    model.compile(loss=['categorical_crossentropy'], loss_weights = [1.0], metrics = {'action': 'categorical_accuracy'}, optimizer=Adam(lr=learning_rate, decay=decay))
 
     return model
 
