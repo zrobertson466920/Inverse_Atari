@@ -76,7 +76,7 @@ def latent_acc(new_img,af_img):
 
 
 def action_model(learning_rate = 0.001, decay = 0.0):
-    image = Input(shape=(105, 80, 6), name='image')
+    image = Input(shape=(105, 80, 12), name='image')
     l_action = Input(shape=(4,), name='l_action')
     x = Conv2D(64, (4, 4), strides=2, activation='relu', input_shape=(105, 80, 12))(image)
     x = Conv2D(128, (3, 3), strides=2, activation='relu')(x)
@@ -104,7 +104,7 @@ def action_model(learning_rate = 0.001, decay = 0.0):
 def modal_model(learning_rate=0.001, decay=0.0):
 
     # Forward Prediction
-    image = Input(shape=(105, 80, 6), name='image')
+    image = Input(shape=(105, 80, 12), name='image')
     after_image = Input(shape = (4,105,80,6), name = 'after_image')
     x = Conv2D(64, (4, 4), strides=2, activation='relu', input_shape=(105, 80, 6))(image)
     x = Conv2D(128, (3, 3), strides=2, activation='relu')(x)
@@ -135,7 +135,7 @@ def modal_model(learning_rate=0.001, decay=0.0):
 def latent_model(learning_rate = 0.001, decay = 0.0):
 
     # Latent Prediction
-    image = Input(shape=(105, 80, 6), name='image')
+    image = Input(shape=(105, 80, 12), name='image')
     x = Conv2D(64, (4, 4), strides=2, activation='relu', input_shape=(105, 80, 6))(image)
     x = Conv2D(128, (3, 3), strides=2, activation='relu')(x)
     x = Conv2D(256, (3, 3), strides=2, activation='relu')(x)
