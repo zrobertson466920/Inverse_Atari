@@ -167,6 +167,34 @@ def forward_data(episodes, n_actions=4):
     return np.array(stacks), np.array(actions), np.array(targets)
 
 
+def modal_data(episodes, n_actions=4):
+    stacks = []
+    actions = []
+    targets = []
+    for j in range(len(episodes)):
+        frames, inputs, _, _ = zip(*episodes[j])
+        frames = list(frames)
+        for i in range(len(episodes[j])):
+            frames[i] = frames[i][::2, ::2]
+
+        inputs = np.array(inputs)
+        inputs[inputs == 1] = 0
+
+        stack = []
+        action = []
+        target = []
+        for i in range(len(episodes[j]) - 6):
+            stack.append(np.concatenate(np.array(frames[i:i + 4]), axis=2))
+            action.append(inputs[i + 3])
+            target.append(np.concatenate(np.array(frames[i+2:i+4]),axis = 2))
+
+        stacks += stack
+        actions += action
+        targets += target
+
+    return np.array(stacks), np.array(actions), np.array(targets)
+
+
 def inverse_data(episodes, n_actions=4):
     stacks = []
     actions = []

@@ -214,20 +214,20 @@ if __name__ == '__main__':
 
     env = util.make_environment('BreakoutNoFrameskip-v4')
 
-    test(env)
+    #test(env)
 
     # Optionally load json and create model
     load_model = True
     if load_model is True:
-        json_file = open('Test_Models/final_a_model.json', 'r')
+        json_file = open('Test_Models/c_model.json', 'r')
         loaded_model_json = json_file.read()
         json_file.close()
         action_model = model_from_json(loaded_model_json)
         # load weights into new model
-        action_model.load_weights("Test_Models/final_a_model.h5")
+        action_model.load_weights("Test_Models/c_model.h5")
         print("Loaded model from disk")
 
-    # Optionally load json and create model
+    '''# Optionally load json and create model
     load_model = False
     if load_model is True:
         json_file = open('Test_Models/final_l_model.json', 'r')
@@ -238,11 +238,22 @@ if __name__ == '__main__':
         latent_model.load_weights("Test_Models/final_l_model.h5")
         print("Loaded model from disk")
     else:
-        latent_model = models.latent_model(learning_rate=0.0001)
+        latent_model = models.latent_model(learning_rate=0.0001)'''
 
     rew = []
-    episodes, n_actions = util.record_episode(env, num=1)
-    data, actions, targets = util.forward_data(episodes, n_actions)
+    #episodes, n_actions = util.record_episode(env, num=1)
+    episodes = util.load_episodes("Human_Model/", [1])
+    data, actions, targets = util.modal_data(episodes, 4)
+    data = data[:]
+    actions = actions[0:]
+    h_score = np.argmax(action_model.predict([(data - np.mean(data, axis=0)) / 255.0]), axis=1)
+    h_score[h_score == 1] = 0
+    h_conf = confusion_matrix(actions, h_score)
+    #h_conf = normalize(h_conf, norm='l1')
+    print("Human Score is " + str(np.trace(h_conf) / np.sum(h_conf)))
+    print(h_conf)
+    print(h_score[150:450])
+    print(actions[150:450])
     mu = np.mean(data, axis=0)
     for i in range(100):
         env = gym.make("BreakoutNoFrameskip-v4")
@@ -250,7 +261,7 @@ if __name__ == '__main__':
         env.seed(0)
         env.reset()
         # temp = random_play(env)
-        temp = latent_play(env, latent_model, action_model, mu)
+        temp = agent_play(env, action_model, mu)
         rew.append(temp)
         print(temp)
     print("Mean Reward: " + str(np.mean(rew)))
