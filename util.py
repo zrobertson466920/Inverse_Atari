@@ -186,7 +186,7 @@ def modal_data(episodes, n_actions=4):
         for i in range(len(episodes[j]) - 6):
             stack.append(np.concatenate(np.array(frames[i:i + 4]), axis=2))
             action.append(inputs[i + 3])
-            target.append(np.concatenate(np.array(frames[i+2:i+4]),axis = 2))
+            target.append(np.concatenate(np.array(frames[i+3:i+5]),axis = 2))
 
         stacks += stack
         actions += action
