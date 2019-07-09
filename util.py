@@ -66,8 +66,8 @@ def repeat_upsample(rgb_array, k=1, l=1, err=[]):
 def make_environment(game):
     env = gym.make(game)
     env = MaxAndSkipEnv(env, 2)
-    #env.seed(0)
-    #env.action_space.np_random.seed(0)
+    env.seed(0)
+    env.action_space.np_random.seed(0)
     #prng.seed(0)
     return env
 
@@ -186,7 +186,10 @@ def modal_data(episodes, n_actions=4):
         for i in range(len(episodes[j]) - 6):
             stack.append(np.concatenate(np.array(frames[i:i + 4]), axis=2))
             action.append(inputs[i + 3])
-            target.append(np.array([frames[i+4]-frames[i+3]]))
+            temp = np.copy(frames[i+4:i+6])
+            temp[0] = temp[0] - frames[i+3]
+            temp[1] = temp[1] - frames[i+4]
+            target.append(np.concatenate(np.array(temp),axis = 2))
 
         stacks += stack
         actions += action

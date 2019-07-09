@@ -103,10 +103,10 @@ def latent_play(env, latent_model, action_model, mean):
         while not done:
             if (abs(lives - t_lives) >= 1) or (count < 4):
                 action = np.random.choice([0, 1, 2, 3], 1, p=[0.4, 0.2, 0.2, 0.2])
-                frame, rew, done, info = env.step(action)
+                frame, _, done, info = env.step(action)
                 frames.append(frame[::2, ::2])
                 episode[-1].insert(1, action)
-                episode.append(list((frame, rew, done, info)))
+                #episode.append(list(env.step(action)))
                 if action == 1:
                     lives = t_lives
                     t_lives = info['ale.lives']
@@ -122,7 +122,7 @@ def latent_play(env, latent_model, action_model, mean):
                 frames.append(frame[::2, ::2])
                 t_lives = info['ale.lives']
                 episode[-1].insert(1, action)
-                episode.append(list((frame, rew, done, info)))
+                #episode.append(list(env.step(action)))
             cv2.imshow('frame', util.repeat_upsample(frames[count][:, :, ::-1], 6, 6))
             if cv2.waitKey(30) & 0xFF == ord('q'):
                 break
@@ -191,21 +191,21 @@ def production_run(env):
 
 
 def test(env):
-    l_model = models.latent_model(learning_rate=0.0001)
-    m_model = models.modal_model(learning_rate=0.0001)
+    l_model = models.latent_model(learning_rate=0.001)
+    m_model = models.modal_model(learning_rate=0.001)
     for k in range(1):
         for i in range(3):
             episodes, n_actions = util.record_episode(env, num=2)
             # episodes = util.load_episodes("/content/gdrive/My Drive/Colab Notebooks/Trained_Model/",
             #                              list(range(2 * i, 2 * i + 2)))
             data, actions, targets = util.modal_data(episodes)
-            m_model.fit([data], [targets], batch_size=16, epochs=1, validation_split=0.2, shuffle=True)
+            m_model.fit([data], [np.moveaxis(np.repeat(np.array([targets]),4,axis = 0),0,1)], batch_size=16, epochs=1, validation_split=0.2, shuffle=True)
             pred_image = m_model.predict([data])
-            latent_actions = models.argmin_mse(pred_image,targets)
+            latent_actions = models.argmin_mse(pred_image,np.moveaxis(np.repeat(np.array([targets]), 4, axis=0), 0, 1))
             l_model.fit([data], [to_categorical(latent_actions)], class_weight = 'auto', batch_size=16, epochs=1, validation_split=0.2, shuffle=True)
             print(pred_image.shape)
             print(targets.shape)
-            print(np.mean(np.square(pred_image - targets),(2, 3, 4), keepdims=True)[:, :, 0, 0, 0])
+            print(np.mean(np.square(pred_image - np.moveaxis(np.repeat(np.array([targets]), 4, axis=0), 0, 1)),(2, 3, 4), keepdims=True)[:, :, 0, 0, 0])
             #for i in range(4):
             #    plt.imshow(np.ndarray.astype(pred_image[5][i][:, :, 3:6], dtype='uint8'))
             #    plt.show()
@@ -224,8 +224,8 @@ if __name__ == '__main__':
 
     test(env)
 
-    episodes, n_actions = util.record_episode(env, num=1)
-    data, actions, targets = util.modal_data(episodes, 4)
+    #episodes, n_actions = util.record_episode(env, num=1)
+    #data, actions, targets = util.modal_data(episodes, 4)
     #print(actions[10:])
     #util.validate_data(data[10],actions[10],targets[10])
 
