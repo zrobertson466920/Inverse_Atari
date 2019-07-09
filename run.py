@@ -90,38 +90,46 @@ def random_play(env):
 # Play Partial Agent
 def latent_play(env, latent_model, action_model, mean):
     rew_total = 0
+    episodes = []
+    p_dict = {0:3,1:0,2:2,3:3}
     for i in range(1):
         done = False
         lives = 5
         t_lives = 0
         count = 0
         frames = []
+        episode = []
+        episode.append([env.reset(), 0, done, None])
         while not done:
             if (abs(lives - t_lives) >= 1) or (count < 4):
                 action = np.random.choice([0, 1, 2, 3], 1, p=[0.4, 0.2, 0.2, 0.2])
-                frame, _, done, info = env.step(action)
+                frame, rew, done, info = env.step(action)
                 frames.append(frame[::2, ::2])
+                episode[-1].insert(1, action)
+                episode.append(list((frame, rew, done, info)))
                 if action == 1:
                     lives = t_lives
                     t_lives = info['ale.lives']
             else:
-                latent_action = latent_model.predict([np.array([np.concatenate(frames[-2:], axis=2)]), np.zeros((1,4,105,80,6))])[1]
-                print(np.argmin(latent_action))
-                dist = action_model.predict([np.array([np.concatenate(frames[-2:], axis=2)]),
-                                             latent_action])[0]
+                latent_action = np.zeros((4,))
+                latent_action[np.argmax(latent_model.predict([np.array([np.concatenate(frames[-4:], axis=2)])]),axis = 1)[0]] = 1
+                dist = action_model.predict([np.array([np.concatenate(frames[-4:], axis=2)]),np.array([latent_action])])[0]
                 dist /= np.sum(dist)
-                print(np.argmin(dist))
                 action = np.random.choice([0, 1, 2, 3], 1, p=dist)[0]
+                #action = p_dict[np.argmax(latent_model.predict([np.array([np.concatenate(frames[-4:], axis=2)])]), axis=1)[0]]
                 frame, rew, done, info = env.step(action)
                 rew_total += rew
                 frames.append(frame[::2, ::2])
                 t_lives = info['ale.lives']
+                episode[-1].insert(1, action)
+                episode.append(list((frame, rew, done, info)))
             cv2.imshow('frame', util.repeat_upsample(frames[count][:, :, ::-1], 6, 6))
             if cv2.waitKey(30) & 0xFF == ord('q'):
                 break
             count += 1
+        episodes.append(episode)
     env.close()
-    return rew_total
+    return episodes, rew_total
 
 
 def predict(input):
@@ -216,35 +224,40 @@ if __name__ == '__main__':
 
     #test(env)
 
+    episodes, n_actions = util.record_episode(env, num=1)
+    data, actions, targets = util.modal_data(episodes, 4)
+    #print(actions[10:])
+    #util.validate_data(data[10],actions[10],targets[10])
+
     # Optionally load json and create model
     load_model = True
     if load_model is True:
-        json_file = open('Test_Models/c_model.json', 'r')
+        json_file = open('Test_Models/a_model.json', 'r')
         loaded_model_json = json_file.read()
         json_file.close()
         action_model = model_from_json(loaded_model_json)
         # load weights into new model
-        action_model.load_weights("Test_Models/c_model.h5")
+        action_model.load_weights("Test_Models/a_model.h5")
         print("Loaded model from disk")
 
-    '''# Optionally load json and create model
+    # Optionally load json and create model
     load_model = False
     if load_model is True:
-        json_file = open('Test_Models/final_l_model.json', 'r')
+        json_file = open('Test_Models/l_model.json', 'r')
         loaded_model_json = json_file.read()
         json_file.close()
         latent_model = model_from_json(loaded_model_json)
         # load weights into new model
-        latent_model.load_weights("Test_Models/final_l_model.h5")
+        latent_model.load_weights("Test_Models/l_model.h5")
         print("Loaded model from disk")
     else:
-        latent_model = models.latent_model(learning_rate=0.0001)'''
+        latent_model = models.latent_model(learning_rate=0.0001)
 
     rew = []
     #episodes, n_actions = util.record_episode(env, num=1)
     episodes = util.load_episodes("Human_Model/", [1])
     data, actions, targets = util.modal_data(episodes, 4)
-    data = data[:]
+    '''data = data[:]
     actions = actions[0:]
     h_score = np.argmax(action_model.predict([(data - np.mean(data, axis=0)) / 255.0]), axis=1)
     h_score[h_score == 1] = 0
@@ -253,7 +266,7 @@ if __name__ == '__main__':
     print("Human Score is " + str(np.trace(h_conf) / np.sum(h_conf)))
     print(h_conf)
     print(h_score[150:450])
-    print(actions[150:450])
+    print(actions[150:450])'''
     mu = np.mean(data, axis=0)
     for i in range(100):
         env = gym.make("BreakoutNoFrameskip-v4")
@@ -261,7 +274,7 @@ if __name__ == '__main__':
         env.seed(0)
         env.reset()
         # temp = random_play(env)
-        temp = agent_play(env, action_model, mu)
+        _, temp = latent_play(env, latent_model,action_model, mu)
         rew.append(temp)
         print(temp)
     print("Mean Reward: " + str(np.mean(rew)))
