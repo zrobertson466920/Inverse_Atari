@@ -113,9 +113,15 @@ def latent_play(env, latent_model, action_model, mean):
             else:
                 latent_action = np.zeros((4,))
                 latent_action[np.argmax(latent_model.predict([np.array([np.concatenate(frames[-4:], axis=2)])]),axis = 1)[0]] = 1
-                dist = action_model.predict([np.array([np.concatenate(frames[-4:], axis=2)]),np.array([latent_action])])[0]
+                '''dist = action_model.predict([np.array([np.concatenate(frames[-4:], axis=2)]),np.array([latent_action])])[0]
                 dist /= np.sum(dist)
-                action = np.random.choice([0, 1, 2, 3], 1, p=dist)[0]
+                action = np.random.choice([0, 1, 2, 3], 1, p=dist)[0]'''
+                action = np.argmax(action_model.predict([np.array([np.concatenate(frames[-4:], axis=2)]), np.array([latent_action])])[0])
+                if np.random.randint(0,10,1) == 0:
+                    if np.random.randint(0,2,1) == 0:
+                        action = 2
+                    else:
+                        action = 3
                 #action = p_dict[np.argmax(latent_model.predict([np.array([np.concatenate(frames[-4:], axis=2)])]), axis=1)[0]]
                 frame, rew, done, info = env.step(action)
                 rew_total += rew
@@ -222,7 +228,7 @@ if __name__ == '__main__':
 
     env = util.make_environment('BreakoutNoFrameskip-v4')
 
-    test(env)
+    #test(env)
 
     #episodes, n_actions = util.record_episode(env, num=1)
     #data, actions, targets = util.modal_data(episodes, 4)
@@ -241,14 +247,14 @@ if __name__ == '__main__':
         print("Loaded model from disk")
 
     # Optionally load json and create model
-    load_model = False
+    load_model = True
     if load_model is True:
-        json_file = open('Test_Models/l_model.json', 'r')
+        json_file = open('Test_Models/final_l_model.json', 'r')
         loaded_model_json = json_file.read()
         json_file.close()
         latent_model = model_from_json(loaded_model_json)
         # load weights into new model
-        latent_model.load_weights("Test_Models/l_model.h5")
+        latent_model.load_weights("Test_Models/final_l_model.h5")
         print("Loaded model from disk")
     else:
         latent_model = models.latent_model(learning_rate=0.0001)

@@ -60,7 +60,7 @@ def w_sum(arg):
 def latent_cross(new_img,af_img):
 
     def metric(y_true,y_pred):
-        val = K.cast(K.one_hot(K.argmin(K.mean(K.square(new_img-af_img), (2,3,4), keepdims=True)[:,:,0,0,0],axis = 1),4),dtype ='float32')
+        val = K.cast(K.one_hot(K.argmin(K.mean(K.square(new_img-af_img), (2,3,4), keepdims=True)[:,:,0,0,0],axis = 1),3),dtype ='float32')
         return K.categorical_crossentropy(val,y_pred)
 
     return metric
@@ -69,7 +69,7 @@ def latent_cross(new_img,af_img):
 def latent_acc(new_img,af_img):
 
     def metric(y_true,y_pred):
-        val = K.cast(K.one_hot(K.argmin(K.mean(K.square(new_img - af_img), (2, 3, 4), keepdims=True)[:, :, 0, 0, 0], axis=1), 4),dtype='float32')
+        val = K.cast(K.one_hot(K.argmin(K.mean(K.square(new_img - af_img), (2, 3, 4), keepdims=True)[:, :, 0, 0, 0], axis=1), 3),dtype='float32')
         return keras.metrics.categorical_accuracy(val,y_pred)
 
     return metric
@@ -94,7 +94,7 @@ def action_model(learning_rate = 0.001, decay = 0.0):
     x = Dropout(0.2)(x)
     x = Dense(64, activation='relu')(x)
     x = Activation('sigmoid')(x)
-    action = Dense(4, activation='softmax')(x)
+    action = Dense(3, activation='softmax')(x)
     model = Model(inputs=[image,l_action], outputs=[action])
     model.compile(loss='categorical_crossentropy', optimizer=Adam(lr=learning_rate, decay=decay),
                   metrics=['accuracy'])
@@ -124,7 +124,7 @@ def modal_model(learning_rate=0.001, decay=0.0):
     x = Conv2DTranspose(128, (3, 3), strides=2, activation='relu')(x)
     x = Conv2DTranspose(64, (6, 3), strides=2, activation='relu')(x)
     x = Conv2DTranspose(6*4, (7, 4), strides=2, activation='relu')(x)
-    new_image = Reshape((4,105,80,6),name = 'new_image')(x)
+    new_image = Reshape((3,105,80,6),name = 'new_image')(x)
 
     model = Model(inputs=[image], outputs=[new_image])
     model.compile(loss=[min_mse], loss_weights=[1.0], optimizer=Adam(lr=learning_rate, decay=decay))
@@ -150,7 +150,7 @@ def latent_model(learning_rate = 0.001, decay = 0.0):
     x = Dropout(0.2)(x)
     x = Dense(64, activation='relu')(x)
     x = Activation('sigmoid')(x)
-    action = Dense(4, activation='softmax', name = 'action')(x)
+    action = Dense(3, activation='softmax', name = 'action')(x)
 
     model = Model(inputs=[image], outputs=[action])
     model.compile(loss=['categorical_crossentropy'], loss_weights = [1.0], metrics = {'action': 'categorical_accuracy'}, optimizer=Adam(lr=learning_rate, decay=decay))
