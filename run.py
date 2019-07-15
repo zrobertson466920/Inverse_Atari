@@ -205,13 +205,13 @@ def test(env):
             # episodes = util.load_episodes("/content/gdrive/My Drive/Colab Notebooks/Trained_Model/",
             #                              list(range(2 * i, 2 * i + 2)))
             data, actions, targets = util.modal_data(episodes)
-            m_model.fit([data], [np.moveaxis(np.repeat(np.array([targets]),4,axis = 0),0,1)], batch_size=16, epochs=1, validation_split=0.2, shuffle=True)
+            m_model.fit([data], [np.moveaxis(np.repeat(np.array([targets]),3,axis = 0),0,1)], batch_size=16, epochs=1, validation_split=0.2, shuffle=True)
             pred_image = m_model.predict([data])
-            latent_actions = models.argmin_mse(pred_image,np.moveaxis(np.repeat(np.array([targets]), 4, axis=0), 0, 1))
+            latent_actions = models.argmin_mse(pred_image,np.moveaxis(np.repeat(np.array([targets]), 3, axis=0), 0, 1))
             l_model.fit([data], [to_categorical(latent_actions)], class_weight = 'auto', batch_size=16, epochs=1, validation_split=0.2, shuffle=True)
             print(pred_image.shape)
             print(targets.shape)
-            print(np.mean(np.square(pred_image - np.moveaxis(np.repeat(np.array([targets]), 4, axis=0), 0, 1)),(2, 3, 4), keepdims=True)[:, :, 0, 0, 0])
+            print(np.mean(np.square(pred_image - np.moveaxis(np.repeat(np.array([targets]), 3, axis=0), 0, 1)),(2, 3, 4), keepdims=True)[:, :, 0, 0, 0])
             #for i in range(4):
             #    plt.imshow(np.ndarray.astype(pred_image[5][i][:, :, 3:6], dtype='uint8'))
             #    plt.show()
@@ -228,7 +228,7 @@ if __name__ == '__main__':
 
     env = util.make_environment('BreakoutNoFrameskip-v4')
 
-    #test(env)
+    test(env)
 
     #episodes, n_actions = util.record_episode(env, num=1)
     #data, actions, targets = util.modal_data(episodes, 4)
