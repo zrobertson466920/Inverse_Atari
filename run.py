@@ -88,7 +88,7 @@ def random_play(env):
 
 
 # Play Partial Agent
-def latent_play(env, latent_model, action_model, mean):
+def latent_play(env, latent_model, action_model, guess = None):
     rew_total = 0
     episodes = []
     p_dict = {0:3,1:0,2:2,3:3}
@@ -99,7 +99,7 @@ def latent_play(env, latent_model, action_model, mean):
         count = 0
         frames = []
         episode = []
-        episode.append([env.reset(), 0, done, None])
+        episode.append([env.reset(), 0, done])
         while not done:
             if (abs(lives - t_lives) >= 1) or (count < 4):
                 action = np.random.choice([0, 1, 2, 3], 1, p=[0.4, 0.2, 0.2, 0.2])
@@ -111,29 +111,30 @@ def latent_play(env, latent_model, action_model, mean):
                     lives = t_lives
                     t_lives = info['ale.lives']
             else:
-                latent_action = np.zeros((4,))
-                latent_action[np.argmax(latent_model.predict([np.array([np.concatenate(frames[-4:], axis=2)])]),axis = 1)[0]] = 1
-                '''dist = action_model.predict([np.array([np.concatenate(frames[-4:], axis=2)]),np.array([latent_action])])[0]
-                dist /= np.sum(dist)
-                action = np.random.choice([0, 1, 2, 3], 1, p=dist)[0]'''
-                action = np.argmax(action_model.predict([np.array([np.concatenate(frames[-4:], axis=2)]), np.array([latent_action])])[0])
-                if np.random.randint(0,10,1) == 0:
-                    if np.random.randint(0,2,1) == 0:
-                        action = 2
-                    else:
-                        print('ds')
-                        action = 3
-                #action = p_dict[np.argmax(latent_model.predict([np.array([np.concatenate(frames[-4:], axis=2)])]), axis=1)[0]]
+                if guess != None:
+                    action = guess[
+                        np.argmax(latent_model.predict([np.array([np.concatenate(frames[-4:], axis=2)])]), axis=1)[0]]
+                else:
+                    latent_action = np.zeros((4,))
+                    latent_action[
+                        np.argmax(latent_model.predict([np.array([np.concatenate(frames[-4:], axis=2)])]), axis=1)[
+                            0]] = 1
+                    dist = \
+                    action_model.predict([np.array([np.concatenate(frames[-4:], axis=2)]), np.array([latent_action])])[
+                        0]
+                    # dist[3] /= 3
+                    dist /= np.sum(dist)
+                    action = np.random.choice([0, 1, 2, 3], 1, p=dist)[0]
                 frame, rew, done, info = env.step(action)
                 rew_total += rew
                 frames.append(frame[::2, ::2])
                 t_lives = info['ale.lives']
                 episode[-1].insert(1, action)
                 #episode.append(list(env.step(action)))
-            cv2.imshow('frame', util.repeat_upsample(frames[count][:, :, ::-1], 6, 6))
+            '''cv2.imshow('frame', util.repeat_upsample(frames[count][:, :, ::-1], 6, 6))
             if cv2.waitKey(30) & 0xFF == ord('q'):
                 break
-            count += 1
+            count += 1'''
         episodes.append(episode)
     env.close()
     return episodes, rew_total
@@ -250,12 +251,12 @@ if __name__ == '__main__':
     # Optionally load json and create model
     load_model = True
     if load_model is True:
-        json_file = open('Test_Models/final_l_model.json', 'r')
+        json_file = open('Test_Models/c_model.json', 'r')
         loaded_model_json = json_file.read()
         json_file.close()
         latent_model = model_from_json(loaded_model_json)
         # load weights into new model
-        latent_model.load_weights("Test_Models/final_l_model.h5")
+        latent_model.load_weights("Test_Models/c_model.h5")
         print("Loaded model from disk")
     else:
         latent_model = models.latent_model(learning_rate=0.0001)
@@ -275,13 +276,14 @@ if __name__ == '__main__':
     print(h_score[150:450])
     print(actions[150:450])'''
     mu = np.mean(data, axis=0)
-    for i in range(100):
+    for i in range(30):
         env = gym.make("BreakoutNoFrameskip-v4")
         env = util.MaxAndSkipEnv(env, 2)
         env.seed(0)
+        #env = gym.wrappers.Monitor(env, 'Latent_2_Recording', force=True)
         env.reset()
         # temp = random_play(env)
-        _, temp = latent_play(env, latent_model,action_model, mu)
+        _, temp = latent_play(env, latent_model,action_model, guess = {0:2,1:2,2:3,3:0})
         rew.append(temp)
         print(temp)
     print("Mean Reward: " + str(np.mean(rew)))
