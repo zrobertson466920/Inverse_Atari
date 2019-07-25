@@ -76,6 +76,7 @@ def latent_acc(new_img,af_img):
 
 
 def action_model(learning_rate = 0.001, decay = 0.0, l_num = 4, a_num = 4):
+
     image = Input(shape=(105, 80, 12), name='image')
     l_action = Input(shape=(l_num,), name='l_action')
     x = Conv2D(64, (4, 4), strides=2, activation='relu', input_shape=(105, 80, 12))(image)
@@ -93,6 +94,32 @@ def action_model(learning_rate = 0.001, decay = 0.0, l_num = 4, a_num = 4):
     x = BatchNormalization()(x)
     x = Dropout(0.2)(x)
     x = Dense(64, activation='relu')(x)
+    x = Activation('sigmoid')(x)
+    action = Dense(a_num, activation='softmax')(x)
+    model = Model(inputs=[image, l_action], outputs=[action])
+    model.compile(loss='categorical_crossentropy', optimizer=Adam(lr=learning_rate, decay=decay),
+                  metrics=['accuracy'])
+    return model
+
+
+def alt_action_model(model, learning_rate = 0.001, decay = 0.0, l_num = 4, a_num = 4):
+
+    image = Input(shape=(105, 80, 12), name='image')
+    layer_name = 'embedding'
+    intermediate_layer_model = Model(inputs=model.input,
+                                     outputs=model.get_layer(layer_name).output)
+    l_action = Input(shape=(l_num,), name='l_action')
+
+    x = intermediate_layer_model(image)
+    y = Dense(512, activation='linear')(l_action)
+    x = multiply([x, y])
+    x = Dense(256, activation='relu')(x)
+    x = BatchNormalization()(x)
+    x = Dropout(0.2)(x)
+    x = Dense(64, activation='relu')(x)
+    x = BatchNormalization()(x)
+    x = Dropout(0.2)(x)
+    x = Dense(4, activation='relu')(x)
     x = Activation('sigmoid')(x)
     action = Dense(a_num, activation='softmax')(x)
     model = Model(inputs=[image,l_action], outputs=[action])
@@ -142,7 +169,7 @@ def latent_model(learning_rate = 0.001, decay = 0.0, l_num = 4):
     x = Conv2D(256, (3, 3), strides=2, activation='relu')(x)
     x = Flatten()(x)
     x = Dropout(0.2)(x)
-    x = Dense(512, activation='relu')(x)
+    x = Dense(512, activation='relu', name = 'embedding')(x)
     x = BatchNormalization()(x)
     x = Dropout(0.2)(x)
     x = Dense(256, activation='relu')(x)

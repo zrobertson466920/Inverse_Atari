@@ -11,6 +11,7 @@ import argparse
 from functools import partial
 import pickle
 from sklearn.metrics import confusion_matrix
+from sklearn.utils import class_weight
 from sklearn.preprocessing import normalize
 import matplotlib.pyplot as plt
 import tensorflow as tf
@@ -84,14 +85,14 @@ def random_play(env):
                 rew_total += episode[-1][1]
         episodes.append(episode)
     env.close()
-    return rew_total
+    return episodes, rew_total
 
 
 # Play Partial Agent
-def latent_play(env, latent_model, action_model, guess = None):
+def latent_play(env, latent_model, action_model, l_num=4, guess=None, show=False):
     rew_total = 0
     episodes = []
-    p_dict = {0:3,1:0,2:2,3:3}
+
     for i in range(1):
         done = False
         lives = 5
@@ -99,14 +100,14 @@ def latent_play(env, latent_model, action_model, guess = None):
         count = 0
         frames = []
         episode = []
-        episode.append([env.reset(), 0, done])
+        episode.append([env.reset(), 0, done, None])
         while not done:
             if (abs(lives - t_lives) >= 1) or (count < 4):
                 action = np.random.choice([0, 1, 2, 3], 1, p=[0.4, 0.2, 0.2, 0.2])
-                frame, _, done, info = env.step(action)
+                frame, rew, done, info = env.step(action)
                 frames.append(frame[::2, ::2])
                 episode[-1].insert(1, action)
-                #episode.append(list(env.step(action)))
+                episode.append(list((frame, rew, done, info)))
                 if action == 1:
                     lives = t_lives
                     t_lives = info['ale.lives']
@@ -115,26 +116,28 @@ def latent_play(env, latent_model, action_model, guess = None):
                     action = guess[
                         np.argmax(latent_model.predict([np.array([np.concatenate(frames[-4:], axis=2)])]), axis=1)[0]]
                 else:
-                    latent_action = np.zeros((4,))
+                    latent_action = np.zeros((l_num,))
                     latent_action[
                         np.argmax(latent_model.predict([np.array([np.concatenate(frames[-4:], axis=2)])]), axis=1)[
                             0]] = 1
                     dist = \
                     action_model.predict([np.array([np.concatenate(frames[-4:], axis=2)]), np.array([latent_action])])[
                         0]
-                    # dist[3] /= 3
+                    #dist = pow(dist,0.5)
+                    dist = dist + 0.1
                     dist /= np.sum(dist)
                     action = np.random.choice([0, 1, 2, 3], 1, p=dist)[0]
                 frame, rew, done, info = env.step(action)
-                rew_total += rew
+                rew_total += episode[-1][1]
                 frames.append(frame[::2, ::2])
                 t_lives = info['ale.lives']
                 episode[-1].insert(1, action)
-                #episode.append(list(env.step(action)))
-            '''cv2.imshow('frame', util.repeat_upsample(frames[count][:, :, ::-1], 6, 6))
-            if cv2.waitKey(30) & 0xFF == ord('q'):
-                break
-            count += 1'''
+                episode.append(list((frame, rew, done, info)))
+            if show is True:
+                cv2.imshow('frame', util.repeat_upsample(frames[count][:, :, ::-1], 6, 6))
+                if cv2.waitKey(30) & 0xFF == ord('q'):
+                    break
+            count += 1
         episodes.append(episode)
     env.close()
     return episodes, rew_total
@@ -144,7 +147,7 @@ def predict(input):
     return latent_model.predict(input)
 
 
-def production_run(env):
+def production_run(env,mu):
     # Optionally load json and create model
     load_model = True
     if load_model is True:
@@ -240,42 +243,64 @@ if __name__ == '__main__':
     # Optionally load json and create model
     load_model = True
     if load_model is True:
-        json_file = open('Test_Models/a_model.json', 'r')
+        json_file = open('Production_Models/m_model.json', 'r')
         loaded_model_json = json_file.read()
         json_file.close()
-        action_model = model_from_json(loaded_model_json)
+        m_model = model_from_json(loaded_model_json)
         # load weights into new model
-        action_model.load_weights("Test_Models/a_model.h5")
+        m_model.load_weights("Production_Models/m_model.h5")
         print("Loaded model from disk")
 
     # Optionally load json and create model
     load_model = True
     if load_model is True:
-        json_file = open('Test_Models/c_model.json', 'r')
+        '''json_file = open('Production_Models/l_model.json', 'r')
         loaded_model_json = json_file.read()
         json_file.close()
-        latent_model = model_from_json(loaded_model_json)
+        latent_model = model_from_json(loaded_model_json)'''
+        latent_model = models.latent_model(learning_rate=0.001)
         # load weights into new model
-        latent_model.load_weights("Test_Models/c_model.h5")
+        latent_model.load_weights("Production_Models/l_model.h5")
         print("Loaded model from disk")
     else:
         latent_model = models.latent_model(learning_rate=0.0001)
 
+    a_model = models.alt_action_model(latent_model,learning_rate=0.001)
+    l_num = 4
     rew = []
+    for k in range(1):
+        print(k)
+        for i in range(0, 30, 1):
+            # episodes, n_actions = util.record_episode(env,num = 5)
+            # episodes = util.load_episodes("/content/gdrive/My Drive/Colab Notebooks/Trained_Model/", list(range(5 * 1, 5 * 1 + 5)))
+            # episodes = util.load_episodes("/content/gdrive/My Drive/Colab Notebooks/Human_Model/",[i])
+            env = gym.make("BreakoutNoFrameskip-v4")
+            env = util.MaxAndSkipEnv(env, 2)
+            env.seed(i)
+            env.reset()
+            if i < 3:
+                #episodes, temp = latent_play(env, latent_model, a_model, guess={0:2,1:2,2:3,3:0}, show = True)
+                episodes, temp = random_play(env)
+            else:
+                episodes, temp = latent_play(env, latent_model, a_model, show = True)
+            # episodes, temp = latent_play(env,l_model,a_model)
+            # print(temp)
+            data, actions, targets = util.modal_data(episodes)
+            pred_image = m_model.predict([data])
+            latent_actions = models.argmin_mse(pred_image,np.moveaxis(np.repeat(np.array([targets]),4,axis = 0),0,1))
+            #latent_actions = np.argmax(latent_model.predict([data]), axis=1)
+            actions = actions.astype(dtype='int')
+            class_weights = class_weight.compute_class_weight('balanced', np.unique(list(actions)), list(actions))
+            a_model.fit([data, to_categorical(latent_actions, l_num)], to_categorical(actions, 4),
+                        class_weight=class_weights, batch_size=16, epochs=5, shuffle=True, verbose=True)
+            print(temp)
+            rew.append(temp)
+            # print(np.argmax(a_model.predict([data[110:200],to_categorical(latent_actions[110:200],4)]),axis = 1))
+            # print(actions[110:200])
+            # print(latent_actions[110:200])
+
+    '''rew = []
     #episodes, n_actions = util.record_episode(env, num=1)
-    episodes = util.load_episodes("Human_Model/", [1])
-    data, actions, targets = util.modal_data(episodes, 4)
-    '''data = data[:]
-    actions = actions[0:]
-    h_score = np.argmax(action_model.predict([(data - np.mean(data, axis=0)) / 255.0]), axis=1)
-    h_score[h_score == 1] = 0
-    h_conf = confusion_matrix(actions, h_score)
-    #h_conf = normalize(h_conf, norm='l1')
-    print("Human Score is " + str(np.trace(h_conf) / np.sum(h_conf)))
-    print(h_conf)
-    print(h_score[150:450])
-    print(actions[150:450])'''
-    mu = np.mean(data, axis=0)
     for i in range(30):
         env = gym.make("BreakoutNoFrameskip-v4")
         env = util.MaxAndSkipEnv(env, 2)
@@ -283,8 +308,8 @@ if __name__ == '__main__':
         #env = gym.wrappers.Monitor(env, 'Latent_2_Recording', force=True)
         env.reset()
         # temp = random_play(env)
-        _, temp = latent_play(env, latent_model,action_model, guess = {0:2,1:2,2:3,3:0})
+        _, temp = latent_play(env, latent_model,action_model, guess = {0:2,1:2,2:3,3:0}, show = True)
         rew.append(temp)
         print(temp)
     print("Mean Reward: " + str(np.mean(rew)))
-    print("Std: " + str(np.std(rew)))
+    print("Std: " + str(np.std(rew)))'''
