@@ -117,7 +117,7 @@ def latent_play(env, latent_model, action_model, l_num=4, guess=None, show=False
                         np.argmax(latent_model.predict([np.array([np.concatenate(frames[-4:], axis=2)])]), axis=1)[0]]
                 else:
                     latent_action = np.zeros((l_num,))
-                    latent_action[
+                    latent_action[n
                         np.argmax(latent_model.predict([np.array([np.concatenate(frames[-4:], axis=2)])]), axis=1)[
                             0]] = 1
                     dist = \
@@ -126,7 +126,7 @@ def latent_play(env, latent_model, action_model, l_num=4, guess=None, show=False
                     #dist = pow(dist,0.5)
                     dist = dist + 0.1
                     dist /= np.sum(dist)
-                    action = np.random.choice([0, 1, 2, 3], 1, p=dist)[0]
+                    action = np.random.choice([0, 1, 2, 3], 1, p=dist).flatten()[0]
                 frame, rew, done, info = env.step(action)
                 rew_total += episode[-1][1]
                 frames.append(frame[::2, ::2])
