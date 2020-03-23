@@ -205,7 +205,7 @@ def inverse_data(episodes, n_actions=4):
         frames, inputs, _, _ = zip(*episodes[j])
         frames = list(frames)
         for i in range(len(episodes[j])):
-            frames[i] = frames[i][::2, ::2]
+            frames[i] = frames[i]
 
         inputs = np.array(inputs)
         #inputs[inputs == 1] = 0

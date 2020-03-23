@@ -513,27 +513,28 @@ def model_evaluate(model, num_episodes = 30):
         while not done:
             # _states are only useful when using LSTM policies
             # action, _states = model.predict(obs)
-            '''if count < 4:
+            if count < 4:
                 action = env.action_space.sample()
                 _ , _, done, info = env.step(action)
                 frame = env.render(mode='rgb_array')
-                frames.append(wrap_image(frame))'''
-            #else:
-            print('here')
-            dist = model.predict([np.array([np.concatenate(frames[-4:], axis=2)])])[0]
-            dist[2] = 0
-            dist[3] = 0
-            dist /= np.sum(dist)
-            action = np.random.choice([0, 1, 2, 3], 1, p=dist)[0]
-            print(action)
-            # action = env.action_space.sample()
-            # here, action, rewards and dones are arrays
-            # because we are using vectorized env
-            obs, reward, done, info = env.step(action)
-            img = env.render(mode='rgb_array')
-            episode_rewards.append(reward)
-            episode[-1].insert(1,action)
-            episode.append([wrap_image(img), reward, done, info])
+                frames.append(wrap_image(frame))
+            else:
+                print('here')
+                dist = model.predict([np.array([np.concatenate(frames[-4:], axis=2)])])[0]
+                dist[2] = 0
+                dist[3] = 0
+                dist /= np.sum(dist)
+                action = np.random.choice([0, 1, 2, 3], 1, p=dist)[0]
+                print(action)
+                # action = env.action_space.sample()
+                # here, action, rewards and dones are arrays
+                # because we are using vectorized env
+                obs, reward, done, info = env.step(action)
+                img = env.render(mode='rgb_array')
+                episode_rewards.append(reward)
+                episode[-1].insert(1,action)
+                episode.append([wrap_image(img), reward, done, info])
+            count += 1
 
         env.close()
         all_episode_rewards.append(sum(episode_rewards))
