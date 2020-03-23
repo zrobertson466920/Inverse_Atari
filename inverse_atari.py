@@ -478,7 +478,74 @@ def make_confusion_plot(i_model,f_model,c_model,random_episodes,human_episodes):
     return
 
 
-env = make_environment('Breakout-v4')
+# Shrink image from (400,600,3) -> (105,80,3)
+def wrap_image(img):
+    return np.resize(np.transpose(img[::5,::6],(1,0,2)),(105,80,3))
+
+
+# Push-Cart Evaluation
+def model_evaluate(model, num_episodes = 30):
+    """
+        Evaluate a RL agent
+        :param model: (BaseRLModel object) the RL Agent
+        :param num_episodes: (int) number of episodes to evaluate it
+        :return: (float) Mean reward for the last num_episodes and episode data
+    """
+
+    # This function will only work for a single Environment
+    env = gym.make('CartPole-v1')
+    all_episode_rewards = []
+    episodes = []
+    for i in range(num_episodes):
+        episode_rewards = []
+        episode = []
+        done = False
+        obs = env.reset()
+        empty_img = env.render(mode='rgb_array')
+        print(wrap_image(empty_img).shape)
+        episode.append([wrap_image(empty_img), 0, done, None])
+        count = 0
+        frames = []
+        frames.append(wrap_image(empty_img))
+        frames.append(wrap_image(empty_img))
+        frames.append(wrap_image(empty_img))
+        frames.append(wrap_image(empty_img))
+        while not done:
+            # _states are only useful when using LSTM policies
+            # action, _states = model.predict(obs)
+            '''if count < 4:
+                action = env.action_space.sample()
+                _ , _, done, info = env.step(action)
+                frame = env.render(mode='rgb_array')
+                frames.append(wrap_image(frame))'''
+            #else:
+            print('here')
+            dist = model.predict([np.array([np.concatenate(frames[-4:], axis=2)])])[0]
+            dist[2] = 0
+            dist[3] = 0
+            dist /= np.sum(dist)
+            action = np.random.choice([0, 1, 2, 3], 1, p=dist)[0]
+            print(action)
+            # action = env.action_space.sample()
+            # here, action, rewards and dones are arrays
+            # because we are using vectorized env
+            obs, reward, done, info = env.step(action)
+            img = env.render(mode='rgb_array')
+            episode_rewards.append(reward)
+            episode[-1].insert(1,action)
+            episode.append([wrap_image(img), reward, done, info])
+
+        env.close()
+        all_episode_rewards.append(sum(episode_rewards))
+        episodes.append(episode)
+
+    mean_episode_reward = np.mean(all_episode_rewards)
+    print("Mean reward:", mean_episode_reward, "Num episodes:", num_episodes)
+
+    return mean_episode_reward, episodes
+
+
+env = make_environment('CartPole-v1')
 #print(actions.shape)
 #save_episodes("Trained_Model/",episodes,num = 15)
 #data,actions,targets = forward_data(episodes)
@@ -536,16 +603,19 @@ if load_model is True:
 # Optionally load json and create model
 load_model = True
 if load_model is True:
-    json_file = open('Production_Models/c_model.json', 'r')
+    json_file = open('Test_Models/c_model_push.json', 'r')
     loaded_model_json = json_file.read()
     json_file.close()
     c_model = model_from_json(loaded_model_json)
     # load weights into new model
-    c_model.load_weights("Production_Models/c_model.h5")
+    c_model.load_weights("Test_Models/c_model_push.h5")
     print("Loaded model from disk")
 
     # View data and target to verify integrity
     #validate_data(data[4], actions[4:])'''
+
+print('got here')
+model_evaluate(c_model, num_episodes=1)
 
 #random_episodes, n_actions = record_episode(env,num = 5)
 #human_episodes = load_episodes("Human_Model/",[7])

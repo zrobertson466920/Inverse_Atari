@@ -208,7 +208,7 @@ def inverse_data(episodes, n_actions=4):
             frames[i] = frames[i][::2, ::2]
 
         inputs = np.array(inputs)
-        inputs[inputs == 1] = 0
+        #inputs[inputs == 1] = 0
 
         stack = []
         action = []

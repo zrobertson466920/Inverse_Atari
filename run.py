@@ -15,9 +15,15 @@ from sklearn.utils import class_weight
 from sklearn.preprocessing import normalize
 import matplotlib.pyplot as plt
 import tensorflow as tf
+
+import hdbscan
+import matplotlib.cm as cm
+
 from keras.models import model_from_json
 from keras.utils.np_utils import to_categorical
 from keras.backend import set_value
+from keras import backend as K
+from keras.models import Model
 
 import util
 import models
@@ -32,10 +38,14 @@ def agent_play(env, model, mean, sup=[1, 1, 1, 1], temp=1.0):
         t_lives = 0
         count = 0
         frames = []
+        episode = []
+        episode.append([env.reset(), 0, done, None])
         while not done:
             if (abs(lives - t_lives) >= 1) or (count < 4):
                 action = np.random.choice([0, 1, 2, 3], 1, p=[0.4, 0.2, 0.2, 0.2])
-                frame, _, done, info = env.step(action)
+                frame, rew, done, info = env.step(action)
+                episode[-1].insert(1, action)
+                episode.append(list((frame, rew, done, info)))
                 frames.append(frame[::2, ::2])
                 if action == 1:
                     lives = t_lives
@@ -47,15 +57,17 @@ def agent_play(env, model, mean, sup=[1, 1, 1, 1], temp=1.0):
                 dist /= np.sum(dist)
                 action = np.random.choice([0, 1, 2, 3], 1, p=dist)[0]
                 frame, rew, done, info = env.step(action)
+                episode[-1].insert(1, action)
+                episode.append(list((frame, rew, done, info)))
                 rew_total += rew
                 frames.append(frame[::2, ::2])
                 t_lives = info['ale.lives']
-            cv2.imshow('frame', util.repeat_upsample(frames[count][:, :, ::-1], 6, 6))
+            '''cv2.imshow('frame', util.repeat_upsample(frames[count][:, :, ::-1], 6, 6))
             if cv2.waitKey(30) & 0xFF == ord('q'):
-                break
+                break'''
             count += 1
     env.close()
-    return rew_total
+    return episode, rew_total
 
 
 # Random policy evaluation
@@ -117,9 +129,8 @@ def latent_play(env, latent_model, action_model, l_num=4, guess=None, show=False
                         np.argmax(latent_model.predict([np.array([np.concatenate(frames[-4:], axis=2)])]), axis=1)[0]]
                 else:
                     latent_action = np.zeros((l_num,))
-                    latent_action[n
-                        np.argmax(latent_model.predict([np.array([np.concatenate(frames[-4:], axis=2)])]), axis=1)[
-                            0]] = 1
+                    latent_action[np.argmax(latent_model.predict([np.array([np.concatenate(frames[-4:], axis=2)])]), axis=1)[0]] = 1
+                    print(latent_action)
                     dist = \
                     action_model.predict([np.array([np.concatenate(frames[-4:], axis=2)]), np.array([latent_action])])[
                         0]
@@ -228,6 +239,165 @@ def test(env):
             #latent_model.fit([(data - np.mean(data, axis=0)) / 255],targets, batch_size=16, epochs=1,validation_split=0.2, shuffle=True)
             # f_model.fit([(data-np.mean(data,axis=0))/255,actions],[targets],batch_size = 64, epochs = 10, validation_split = 0.2, shuffle = True)
 
+# Rescales the Image width by k and the height by l.
+def repeat_upsample(rgb_array, k=1, l=1, err=[]):
+    # repeat kinda crashes if k/l are zero
+    if k <= 0 or l <= 0:
+        if not err:
+            print("Number of repeats must be larger than 0, k: {}, l: {}, returning default array!".format(k, l))
+            err.append('logged')
+        return rgb_array
+
+    # repeat the pixels k times along the y axis and l times along the x axis
+    # if the input image is of shape (m,n,3), the output image will be of shape (k*m, l*n, 3)
+
+    return np.repeat(np.repeat(rgb_array, k, axis=0), l, axis=1)
+
+
+# Plays back the episode
+def playback(frames, zoom = 3):
+    for i in range(len(frames)):
+        cv2.imshow('frame', repeat_upsample(frames[i][:,:,::-1], zoom, zoom))
+        if cv2.waitKey(30) & 0xFF == ord('q'):
+            break
+
+
+def drawArrow(A, B, i):
+    plt.arrow(A[0], A[1], B[0] - A[0], B[1] - A[1],
+              head_width=0.005, length_includes_head=True, color = 'C' + str(i))
+
+
+def visualize_trajectories(m_model,l_model,a_model,start,stop):
+    raw_embedding = []
+    raw_actions = []
+    real_actions = []
+    mu = pickle.load(open('Production_Models/' + 'mu' + '.dump', 'rb'))
+    for j in range(start, stop):
+        #episode = util.load_episodes("Random_Model/", [j])
+        #episode = util.load_episodes("Human_Model/", [j])
+        env = gym.make("BreakoutNoFrameskip-v4")
+        env = util.MaxAndSkipEnv(env, 2)
+        env.seed(j)
+        env.reset()
+        #episode, rew = latent_play(env, l_model,a_model, guess = {0:2,1:2,2:3,3:0}, show = False)
+        episode, temp = agent_play(env, a_model, mean=mu)
+        temp = np.array(temp)
+        episode = np.array([episode])
+        #episode = np.array([episode])
+        #print(rew)
+        #data, actions, targets = util.inverse_data(episode)
+        data, actions = util.inverse_data(episode)
+
+        layer_name = 'dense_28'
+        intermediate_layer_model = Model(inputs=m_model.input,
+                                         outputs=m_model.get_layer(layer_name).output)
+
+        for i in range(len(data)):
+            #state_embedding = np.ravel(intermediate_layer_model.predict(np.array([data[i]])))
+            state_embedding = intermediate_layer_model.predict(np.array([data[i]]))[0]
+            #latent_action = np.ravel(l_model.predict(np.array([data[i]])))
+            #raw_embedding.append(np.concatenate((state_embedding,latent_action)))
+            raw_embedding.append(state_embedding)
+            #raw_actions.append(latent_action)
+            real_actions.append(actions[i])
+
+    from sklearn.decomposition import PCA
+    from sklearn.preprocessing import scale
+
+    pca = PCA(n_components=2)
+    #raw_embedding = scale(raw_embedding,axis = 0)
+    #raw_actions = scale(raw_actions,axis = 0)
+    #raw_encoding = [np.concatenate((a,b)) for a,b in zip(raw_embedding,raw_actions)]
+    #raw_encoding = scale(raw_encoding,axis = 0)
+    new_encoding = np.flip(pca.fit_transform(raw_embedding))
+
+    print(new_encoding.shape)
+    for i in range(new_encoding.shape[0]):
+        if i % 100 in list(range(0, 10)):
+            try:
+                drawArrow(new_encoding[i], new_encoding[i + 1], int(real_actions[i]))
+            except:
+                print(new_encoding[i].shape)
+    #plt.scatter(new_encoding[:,0],new_encoding[:,1])
+    plt.xlim(np.min(-3000), np.max(3000))
+    plt.ylim(np.min(-3000), np.max(3000))
+    plt.title('Inverse Trajectory')
+    plt.savefig('inverse_path.png')
+    plt.show()
+
+
+def collapse_trajectories(m_model,l_model,a_model,start,stop):
+    raw_embedding = []
+    raw_actions = []
+    for j in range(start, stop):
+        #episode = util.load_episodes("Human_Model/", [j])
+        #episode,_ = random_play(util.make_environment('BreakoutNoFrameskip-v4'))
+        env = gym.make("BreakoutNoFrameskip-v4")
+        env = util.MaxAndSkipEnv(env, 2)
+        env.seed(j)
+        env.reset()
+        #episode, rew = latent_play(env, l_model, a_model, guess={0: 2, 1: 2, 2: 3, 3: 0})
+        data, actions, targets = util.modal_data(episode)
+        #frames, inputs, _, _ = zip(*episode[0])
+        #playback(frames)
+
+        layer_name = 'dense_28'
+        intermediate_layer_model = Model(inputs=m_model.input,
+                                         outputs=m_model.get_layer(layer_name).output)
+
+        for i in range(len(data)):
+            raw_embedding.append(intermediate_layer_model.predict(np.array([data[i]]))[0])
+            raw_actions.append(actions[i])
+
+    from sklearn.decomposition import PCA
+    import seaborn as sns
+
+    pca = PCA(n_components=2)
+    new_encoding = np.flip(pca.fit_transform(raw_embedding))
+
+    # Use HDBSCAN
+    clusterer = hdbscan.HDBSCAN(min_cluster_size=4, metric='euclidean')
+    cluster_labels = clusterer.fit_predict(new_encoding)
+    #clusterer.condensed_tree_.plot()
+    #plt.show()
+    print(cluster_labels)
+
+    colors = cm.Spectral(np.linspace(0, 1, len(cluster_labels)))
+    nodes = []
+
+    for i in np.unique(cluster_labels):
+
+        if i != -1:
+            class_member_mask = (cluster_labels == i)
+
+            nodes.append(np.mean(new_encoding[class_member_mask], axis=0))
+
+
+    '''for i, c in zip(cluster_labels,colors):
+
+        if i != -1:
+            class_member_mask = (cluster_labels == i)
+
+            nodes.append(np.mean(new_encoding[class_member_mask],axis = 0))
+
+            #plt.scatter(np.mean(new_encoding[class_member_mask][:,0],0),np.mean(new_encoding[class_member_mask][:,1],axis = 0),color = c, s = 15)
+            plt.scatter(new_encoding[class_member_mask][:, 0],
+                        new_encoding[class_member_mask][:, 1], color=c, s=15)'''
+
+    for i in range(new_encoding.shape[0]):
+        try:
+            if cluster_labels[i] != -1 and cluster_labels[i+1] != -1:
+                drawArrow(nodes[cluster_labels[i]], nodes[cluster_labels[i + 1]], raw_actions[cluster_labels[i]])
+            #else:
+                #drawArrow(new_encoding[i], new_encoding[i + 1], 1)
+        except:
+            print(nodes[cluster_labels[i]])
+
+    # plt.scatter(new_encoding[:,0],new_encoding[:,1])
+    plt.xlim(np.min(-3000), np.max(3000))
+    plt.ylim(np.min(-3000), np.max(3000))
+    plt.show()
+
 
 if __name__ == '__main__':
 
@@ -254,6 +424,17 @@ if __name__ == '__main__':
     # Optionally load json and create model
     load_model = True
     if load_model is True:
+        json_file = open('Production_Models/c_model.json', 'r')
+        loaded_model_json = json_file.read()
+        json_file.close()
+        c_model = model_from_json(loaded_model_json)
+        # load weights into new model
+        c_model.load_weights("Production_Models/c_model.h5")
+        print("Loaded model from disk")
+
+    # Optionally load json and create model
+    load_model = True
+    if load_model is True:
         '''json_file = open('Production_Models/l_model.json', 'r')
         loaded_model_json = json_file.read()
         json_file.close()
@@ -265,7 +446,9 @@ if __name__ == '__main__':
     else:
         latent_model = models.latent_model(learning_rate=0.0001)
 
-    a_model = models.alt_action_model(latent_model,learning_rate=0.001)
+    visualize_trajectories(m_model,latent_model,c_model,0,10)
+
+    '''a_model = models.alt_action_model(latent_model,learning_rate=0.001)
     l_num = 4
     rew = []
     for k in range(1):
@@ -297,9 +480,10 @@ if __name__ == '__main__':
             rew.append(temp)
             # print(np.argmax(a_model.predict([data[110:200],to_categorical(latent_actions[110:200],4)]),axis = 1))
             # print(actions[110:200])
-            # print(latent_actions[110:200])
+            # print(latent_actions[110:200])'''
 
     '''rew = []
+    mu = pickle.load(open('Production_Models/' + 'mu' + '.dump', 'rb'))
     #episodes, n_actions = util.record_episode(env, num=1)
     for i in range(30):
         env = gym.make("BreakoutNoFrameskip-v4")
@@ -307,9 +491,11 @@ if __name__ == '__main__':
         env.seed(0)
         #env = gym.wrappers.Monitor(env, 'Latent_2_Recording', force=True)
         env.reset()
-        # temp = random_play(env)
-        _, temp = latent_play(env, latent_model,action_model, guess = {0:2,1:2,2:3,3:0}, show = True)
+        _, temp = random_play(env)
+        #_, temp = latent_play(env, latent_model,a_model, guess = {0:2,1:2,2:3,3:0}, show = False)
+        #_, temp = agent_play(env, c_model, mean = mu)
         rew.append(temp)
         print(temp)
+    rew = np.array(rew)
     print("Mean Reward: " + str(np.mean(rew)))
     print("Std: " + str(np.std(rew)))'''
