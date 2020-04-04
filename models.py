@@ -214,8 +214,8 @@ def forward_model(learning_rate=0.001, decay=0.0):
         return model
 
 
-def inverse_model(learning_rate=0.001, decay=0.0):
-        image = Input(shape=(105, 80, 12), name='image')
+def inverse_model(learning_rate=0.001, decay=0.0, frame_num = 4, action_num = 4):
+        image = Input(shape=(105, 80, 3*frame_num), name='image')
         x = Conv2D(64, (4, 4), strides=2, activation='relu', input_shape=(105, 80, 12))(image)
         x = Conv2D(128, (3, 3), strides=2, activation='relu')(x)
         x = Conv2D(256, (3, 3), strides=2, activation='relu')(x)
@@ -231,15 +231,40 @@ def inverse_model(learning_rate=0.001, decay=0.0):
         x = Dense(64, activation='relu')(x)
         x = BatchNormalization()(x)
         x = Activation('sigmoid')(x)
-        action = Dense(4, activation='softmax')(x)
+        action = Dense(action_num, activation='softmax')(x)
         model = Model(inputs=[image], outputs=[action])
         model.compile(loss='categorical_crossentropy', optimizer=Adam(lr=learning_rate, decay=decay),
                       metrics=['accuracy'])
         return model
 
 
-def clone_model(learning_rate=0.001, decay=0.0):
-        image = Input(shape=(105, 80, 12), name='image')
+# Cart-Pole Vector Environment Networks
+def linear_clone_model(learning_rate = 0.001, decay = 0.0, frame_num = 4, action_num = 2):
+
+        image = Input(shape = (frame_num * 4,), name='image')
+        x = Dense(2, activation = 'relu')(image)
+        action = Dense(action_num, activation = 'softmax')(x)
+        model = Model(inputs=[image], outputs=[action])
+
+        model.compile(loss='categorical_crossentropy', optimizer=Adam(lr=learning_rate, decay=decay),
+                      metrics=['accuracy'])
+        return model
+
+
+def linear_inverse_model(learning_rate = 0.001, decay = 0.0, frame_num = 4, action_num = 2):
+
+        image = Input(shape=(frame_num * 4,), name='image')
+        x = Dense(2, activation = 'relu')(image)
+        action = Dense(2, activation='softmax')(x)
+        model = Model(inputs=[image], outputs=[action])
+
+        model.compile(loss='categorical_crossentropy', optimizer=Adam(lr=learning_rate, decay=decay),
+                      metrics=['accuracy'])
+        return model
+
+
+def clone_model(learning_rate=0.001, decay=0.0, frame_num = 4, action_num = 2):
+        image = Input(shape=(105, 80, 3*frame_num), name='image')
         x = Conv2D(64, (4, 4), strides=2, activation='relu', input_shape=(105, 80, 12))(image)
         x = Conv2D(128, (3, 3), strides=2, activation='relu')(x)
         x = Conv2D(256, (3, 3), strides=2, activation='relu')(x)
@@ -255,7 +280,7 @@ def clone_model(learning_rate=0.001, decay=0.0):
         x = Dense(64, activation='relu')(x)
         x = BatchNormalization()(x)
         x = Activation('sigmoid')(x)
-        action = Dense(4, activation='softmax')(x)
+        action = Dense(action_num, activation='softmax')(x)
         model = Model(inputs=[image], outputs=[action])
         model.compile(loss='categorical_crossentropy', optimizer=Adam(lr=learning_rate, decay=decay),
                       metrics=['accuracy'])

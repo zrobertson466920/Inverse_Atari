@@ -604,7 +604,7 @@ if load_model is True:
 # Optionally load json and create model
 load_model = True
 if load_model is True:
-    json_file = open('Test_Models/c_model_push.json', 'r')
+    json_file = open('Test_Models/c_model.json', 'r')
     loaded_model_json = json_file.read()
     json_file.close()
     c_model = model_from_json(loaded_model_json)
