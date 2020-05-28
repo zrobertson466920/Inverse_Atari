@@ -15,7 +15,7 @@ from keras.models import model_from_json
 
 import numpy as np
 
-
+# Various Losses in various states of use and disuse
 def clipped_mse(y_true, y_pred):
         return K.mean(K.maximum(K.square(y_pred - y_true), 10), axis=-1)
 
@@ -38,6 +38,11 @@ def min_mse(y_true, y_pred):
     return K.min(dist,axis = 1)
 
 
+def vector_min_mse(y_true, y_pred):
+    dist = K.mean(K.square(y_pred - y_true), (2,), keepdims=True)[:, :, 0]
+    return K.min(dist, axis=1)
+
+
 def p_mse(new_img,a_img,p_image):
 
     def loss(y_true,y_pred):
@@ -48,8 +53,15 @@ def p_mse(new_img,a_img,p_image):
 
 
 # Only takes in numpy (conversions result in memory leak)
+
+
 def argmin_mse(y_true, y_pred):
     val = np.argmin(np.mean(np.square(y_pred - y_true), (2, 3, 4), keepdims=True)[:,:,0,0,0],axis = 1)
+    return val
+
+
+def vector_argmin_mse(y_true, y_pred):
+    val = np.argmin(np.mean(np.square(y_pred - y_true), (2,), keepdims=True)[:,:,0],axis = 1)
     return val
 
 
@@ -75,59 +87,7 @@ def latent_acc(new_img,af_img):
     return metric
 
 
-def action_model(learning_rate = 0.001, decay = 0.0, l_num = 4, a_num = 4):
-
-    image = Input(shape=(105, 80, 12), name='image')
-    l_action = Input(shape=(l_num,), name='l_action')
-    x = Conv2D(64, (4, 4), strides=2, activation='relu', input_shape=(105, 80, 12))(image)
-    x = Conv2D(128, (3, 3), strides=2, activation='relu')(x)
-    x = Conv2D(256, (3, 3), strides=2, activation='relu')(x)
-    x = Conv2D(256, (3, 3), strides=2, activation='relu')(x)
-    x = Flatten()(x)
-    x = Dropout(0.2)(x)
-    x = Dense(512, activation='relu')(x)
-    x = BatchNormalization()(x)
-    x = Dropout(0.2)(x)
-    x = Dense(256, activation='relu')(x)
-    y = Dense(256, activation='linear')(l_action)
-    x = multiply([x, y])
-    x = BatchNormalization()(x)
-    x = Dropout(0.2)(x)
-    x = Dense(64, activation='relu')(x)
-    x = Activation('sigmoid')(x)
-    action = Dense(a_num, activation='softmax')(x)
-    model = Model(inputs=[image, l_action], outputs=[action])
-    model.compile(loss='categorical_crossentropy', optimizer=Adam(lr=learning_rate, decay=decay),
-                  metrics=['accuracy'])
-    return model
-
-
-def alt_action_model(model, learning_rate = 0.001, decay = 0.0, l_num = 4, a_num = 4):
-
-    image = Input(shape=(105, 80, 12), name='image')
-    layer_name = 'embedding'
-    intermediate_layer_model = Model(inputs=model.input,
-                                     outputs=model.get_layer(layer_name).output)
-    l_action = Input(shape=(l_num,), name='l_action')
-
-    x = intermediate_layer_model(image)
-    y = Dense(512, activation='linear')(l_action)
-    x = multiply([x, y])
-    x = Dense(256, activation='relu')(x)
-    x = BatchNormalization()(x)
-    x = Dropout(0.2)(x)
-    x = Dense(64, activation='relu')(x)
-    x = BatchNormalization()(x)
-    x = Dropout(0.2)(x)
-    x = Dense(4, activation='relu')(x)
-    x = Activation('sigmoid')(x)
-    action = Dense(a_num, activation='softmax')(x)
-    model = Model(inputs=[image,l_action], outputs=[action])
-    model.compile(loss='categorical_crossentropy', optimizer=Adam(lr=learning_rate, decay=decay),
-                  metrics=['accuracy'])
-    return model
-
-
+# ILFO Models
 def modal_model(learning_rate=0.001, decay=0.0, l_num = 4):
 
     # Forward Prediction
@@ -185,6 +145,61 @@ def latent_model(learning_rate = 0.001, decay = 0.0, l_num = 4):
     return model
 
 
+def action_model(learning_rate = 0.001, decay = 0.0, l_num = 4, a_num = 4):
+
+    image = Input(shape=(105, 80, 12), name='image')
+    l_action = Input(shape=(l_num,), name='l_action')
+    x = Conv2D(64, (4, 4), strides=2, activation='relu', input_shape=(105, 80, 12))(image)
+    x = Conv2D(128, (3, 3), strides=2, activation='relu')(x)
+    x = Conv2D(256, (3, 3), strides=2, activation='relu')(x)
+    x = Conv2D(256, (3, 3), strides=2, activation='relu')(x)
+    x = Flatten()(x)
+    x = Dropout(0.2)(x)
+    x = Dense(512, activation='relu')(x)
+    x = BatchNormalization()(x)
+    x = Dropout(0.2)(x)
+    x = Dense(256, activation='relu')(x)
+    y = Dense(256, activation='linear')(l_action)
+    x = multiply([x, y])
+    x = BatchNormalization()(x)
+    x = Dropout(0.2)(x)
+    x = Dense(64, activation='relu')(x)
+    x = Activation('sigmoid')(x)
+    action = Dense(a_num, activation='softmax')(x)
+    model = Model(inputs=[image, l_action], outputs=[action])
+    model.compile(loss='categorical_crossentropy', optimizer=Adam(lr=learning_rate, decay=decay),
+                  metrics=['accuracy'])
+    return model
+
+
+# Used for embedding layers
+def alt_action_model(model, learning_rate = 0.001, decay = 0.0, l_num = 4, a_num = 4):
+
+    image = Input(shape=(105, 80, 12), name='image')
+    layer_name = 'embedding'
+    intermediate_layer_model = Model(inputs=model.input,
+                                     outputs=model.get_layer(layer_name).output)
+    l_action = Input(shape=(l_num,), name='l_action')
+
+    x = intermediate_layer_model(image)
+    y = Dense(512, activation='linear')(l_action)
+    x = multiply([x, y])
+    x = Dense(256, activation='relu')(x)
+    x = BatchNormalization()(x)
+    x = Dropout(0.2)(x)
+    x = Dense(64, activation='relu')(x)
+    x = BatchNormalization()(x)
+    x = Dropout(0.2)(x)
+    x = Dense(4, activation='relu')(x)
+    x = Activation('sigmoid')(x)
+    action = Dense(a_num, activation='softmax')(x)
+    model = Model(inputs=[image,l_action], outputs=[action])
+    model.compile(loss='categorical_crossentropy', optimizer=Adam(lr=learning_rate, decay=decay),
+                  metrics=['accuracy'])
+    return model
+
+
+# Prototype
 def forward_model(learning_rate=0.001, decay=0.0):
         image = Input(shape=(105, 80, 6), name='image')
         action = Input(shape=(4,), name='action')
@@ -214,6 +229,7 @@ def forward_model(learning_rate=0.001, decay=0.0):
         return model
 
 
+# BCO Models
 def inverse_model(learning_rate=0.001, decay=0.0, frame_num = 4, action_num = 4):
         image = Input(shape=(105, 80, 3*frame_num), name='image')
         x = Conv2D(64, (4, 4), strides=2, activation='relu', input_shape=(105, 80, 12))(image)
@@ -238,10 +254,36 @@ def inverse_model(learning_rate=0.001, decay=0.0, frame_num = 4, action_num = 4)
         return model
 
 
-# Cart-Pole Vector Environment Networks
-def linear_clone_model(learning_rate = 0.001, decay = 0.0, frame_num = 4, action_num = 2):
+def clone_model(learning_rate=0.001, decay=0.0, frame_num=4, action_num=2):
+    image = Input(shape=(105, 80, 3 * frame_num), name='image')
+    x = Conv2D(64, (4, 4), strides=2, activation='relu', input_shape=(105, 80, 12))(image)
+    x = Conv2D(128, (3, 3), strides=2, activation='relu')(x)
+    x = Conv2D(256, (3, 3), strides=2, activation='relu')(x)
+    x = Conv2D(256, (3, 3), strides=2, activation='relu')(x)
+    x = Flatten()(x)
+    x = Dropout(0.2)(x)
+    x = Dense(512, activation='relu')(x)
+    x = BatchNormalization()(x)
+    x = Dropout(0.2)(x)
+    x = Dense(256, activation='relu')(x)
+    x = BatchNormalization()(x)
+    x = Dropout(0.2)(x)
+    x = Dense(64, activation='relu')(x)
+    x = BatchNormalization()(x)
+    x = Activation('sigmoid')(x)
+    action = Dense(action_num, activation='softmax')(x)
+    model = Model(inputs=[image], outputs=[action])
+    model.compile(loss='categorical_crossentropy', optimizer=Adam(lr=learning_rate, decay=decay),
+                  metrics=['accuracy'])
+    return model
 
-        image = Input(shape = (frame_num * 4,), name='image')
+
+# Vector Environment Networks
+
+# Vector BCO
+def linear_clone_model(learning_rate = 0.001, decay = 0.0, dim = 4, frame_num = 4, action_num = 2):
+
+        image = Input(shape = (frame_num * dim,), name='image')
         x = Dense(2, activation = 'relu')(image)
         action = Dense(action_num, activation = 'softmax')(x)
         model = Model(inputs=[image], outputs=[action])
@@ -251,37 +293,58 @@ def linear_clone_model(learning_rate = 0.001, decay = 0.0, frame_num = 4, action
         return model
 
 
-def linear_inverse_model(learning_rate = 0.001, decay = 0.0, frame_num = 4, action_num = 2):
+def linear_inverse_model(learning_rate = 0.001, decay = 0.0, dim = 4, frame_num = 4, action_num = 2):
 
-        image = Input(shape=(frame_num * 4,), name='image')
-        x = Dense(2, activation = 'relu')(image)
-        action = Dense(2, activation='softmax')(x)
-        model = Model(inputs=[image], outputs=[action])
-
-        model.compile(loss='categorical_crossentropy', optimizer=Adam(lr=learning_rate, decay=decay),
-                      metrics=['accuracy'])
-        return model
-
-
-def clone_model(learning_rate=0.001, decay=0.0, frame_num = 4, action_num = 2):
-        image = Input(shape=(105, 80, 3*frame_num), name='image')
-        x = Conv2D(64, (4, 4), strides=2, activation='relu', input_shape=(105, 80, 12))(image)
-        x = Conv2D(128, (3, 3), strides=2, activation='relu')(x)
-        x = Conv2D(256, (3, 3), strides=2, activation='relu')(x)
-        x = Conv2D(256, (3, 3), strides=2, activation='relu')(x)
-        x = Flatten()(x)
-        x = Dropout(0.2)(x)
-        x = Dense(512, activation='relu')(x)
-        x = BatchNormalization()(x)
-        x = Dropout(0.2)(x)
-        x = Dense(256, activation='relu')(x)
-        x = BatchNormalization()(x)
-        x = Dropout(0.2)(x)
-        x = Dense(64, activation='relu')(x)
-        x = BatchNormalization()(x)
-        x = Activation('sigmoid')(x)
+        image = Input(shape=(frame_num * dim,), name='image')
+        x = Dense(action_num, activation = 'relu')(image)
         action = Dense(action_num, activation='softmax')(x)
         model = Model(inputs=[image], outputs=[action])
+
         model.compile(loss='categorical_crossentropy', optimizer=Adam(lr=learning_rate, decay=decay),
                       metrics=['accuracy'])
         return model
+
+
+# Vector ILFO
+def vector_modal_model(learning_rate = 0.001, decay = 0.0, dim = 4, frame_num = 4, latent_action_num = 2):
+
+    # Forward Prediction
+    image = Input(shape=(frame_num * dim,), name='image')
+    x = Dense(latent_action_num * dim, activation = 'relu')(image)
+    x = Dense(latent_action_num * frame_num * dim*10, activation='relu')(x)
+    x = Dense(latent_action_num * dim, activation='relu')(x)
+    new_image = Reshape((latent_action_num, dim), name='new_image')(x)
+
+    model = Model(inputs=[image], outputs=[new_image])
+    model.compile(loss=[vector_min_mse], loss_weights=[1.0], optimizer=Adam(lr=learning_rate, decay=decay))
+
+    return model
+
+
+def vector_latent_model(learning_rate = 0.001, decay = 0.0, dim = 4, frame_num = 4, latent_action_num = 2):
+
+    # Latent Prediction
+    image = Input(shape=(frame_num * dim,), name='image')
+    x = Dense(latent_action_num, activation='relu')(image)
+    action = Dense(latent_action_num, activation='softmax')(x)
+
+    model = Model(inputs=[image], outputs=[action])
+    model.compile(loss=['categorical_crossentropy'], loss_weights=[1.0], metrics={'action': 'categorical_accuracy'},
+                  optimizer=Adam(lr=learning_rate, decay=decay))
+
+    return model
+
+
+def vector_action_model(learning_rate = 0.001, decay = 0.0, dim = 4, frame_num = 4, latent_action_num = 2, action_num = 2):
+
+    image = Input(shape=(frame_num * dim,), name='image')
+    latent_action = Input(shape=(latent_action_num,), name='l_action')
+    x = Dense(latent_action_num * frame_num, activation='relu')(image)
+    y = Dense(latent_action_num * frame_num, activation='linear')(latent_action)
+    x = multiply([x, y])
+    x = Dense(action_num, activation='relu')(x)
+    action = Dense(action_num, activation='softmax')(x)
+    model = Model(inputs=[image, latent_action], outputs=[action])
+    model.compile(loss='categorical_crossentropy', optimizer=Adam(lr=learning_rate, decay=decay),
+                  metrics=['accuracy'])
+    return model

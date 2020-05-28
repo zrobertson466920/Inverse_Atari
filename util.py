@@ -260,6 +260,31 @@ def inverse_vector_data(episodes, frame_num = 4, action_num = 2, use_images = Fa
     return np.array(stacks), np.array(actions)
 
 
+def vector_modal_data(episodes, frame_num = 4, latent_action_num = 2, use_images = False):
+
+    stacks = []
+    targets = []
+    actions = []
+    for j in range(len(episodes)):
+        t_s = []
+        t_f = []
+        frames, inputs, _, _ = zip(*episodes[j])
+
+        for i in range(len(episodes[j]) - frame_num):
+            if use_images:
+                t_s.append(np.concatenate(np.array(frames[i:i + frame_num]), axis=2))
+                t_f.append(np.concatenate(np.array(frames[i + frame_num]), axis=2))
+            else:
+                t_s.append(np.concatenate(np.array(frames[i:i + frame_num])))
+                t_f.append(np.array(frames[i + frame_num]))
+
+        stacks += t_s
+        targets += t_f
+        actions += inputs[frame_num - 1:-1]
+
+    return np.array(stacks), np.array(actions), np.array(targets)
+
+
 # Data integrity tool. Shows that observations and target are logically constructed
 def validate_data(d, a, t):
     for i in range(4):
