@@ -281,7 +281,7 @@ def clone_model(learning_rate=0.001, decay=0.0, frame_num=4, action_num=2):
 # Vector Environment Networks
 
 # Vector BCO
-def linear_clone_model(learning_rate = 0.001, decay = 0.0, dim = 4, frame_num = 4, action_num = 2):
+'''def linear_clone_model(learning_rate = 0.001, decay = 0.0, dim = 4, frame_num = 4, action_num = 2):
 
         image = Input(shape = (frame_num * dim,), name='image')
         x = Dense(2, activation = 'relu')(image)
@@ -302,7 +302,61 @@ def linear_inverse_model(learning_rate = 0.001, decay = 0.0, dim = 4, frame_num 
 
         model.compile(loss='categorical_crossentropy', optimizer=Adam(lr=learning_rate, decay=decay),
                       metrics=['accuracy'])
+        return model'''
+
+
+# Non-Linear Vector BCO
+def linear_clone_model(learning_rate = 0.001, decay = 0.0, dim = 4, frame_num = 4, action_num = 2):
+
+        image = Input(shape = (frame_num * dim,), name='image')
+        x = Dense(50*action_num, activation = 'relu')(image)
+        x = Dense(action_num, activation='relu')(x)
+        action = Dense(action_num, activation='softmax')(x)
+        model = Model(inputs=[image], outputs=[action])
+
+        model.compile(loss='categorical_crossentropy', optimizer=Adam(lr=learning_rate, decay=decay),
+                      metrics=['accuracy'])
         return model
+
+# Non-Linear Vector BCO
+def linear_clone_model_continuous(learning_rate = 0.001, decay = 0.0, dim = 4, frame_num = 4, action_num = 2):
+
+        image = Input(shape = (frame_num * dim,), name='image')
+        x = Dense(50*action_num, activation = 'relu')(image)
+        x = Dense(100, activation='relu')(x)
+        x = Dense(action_num, activation='relu')(x)
+        action = Dense(action_num, activation='softmax')(x)
+        model = Model(inputs=[image], outputs=[action])
+
+        model.compile(loss='mse', optimizer=Adam(lr=learning_rate, decay=decay),
+                      metrics=['accuracy'])
+        return model
+
+
+def linear_inverse_model(learning_rate = 0.001, decay = 0.0, dim = 4, frame_num = 4, action_num = 2):
+
+        image = Input(shape=(frame_num * dim,), name='image')
+        x = Dense(50*action_num, activation = 'relu')(image)
+        x = Dense(action_num, activation='relu')(x)
+        action = Dense(action_num, activation='softmax')(x)
+        model = Model(inputs=[image], outputs=[action])
+
+        model.compile(loss='categorical_crossentropy', optimizer=Adam(lr=learning_rate, decay=decay),
+                      metrics=['accuracy'])
+        return model
+
+
+def linear_inverse_model_continuous(learning_rate=0.001, decay=0.0, dim=4, frame_num=4, action_num=2):
+    image = Input(shape=(frame_num * dim,), name='image')
+    x = Dense(50 * action_num, activation='relu')(image)
+    x = Dense(100, activation='relu')(x)
+    x = Dense(action_num, activation='relu')(x)
+    action = Dense(action_num, activation='softmax')(x)
+    model = Model(inputs=[image], outputs=[action])
+
+    model.compile(loss='mse', optimizer=Adam(lr=learning_rate, decay=decay),
+                  metrics=['accuracy'])
+    return model
 
 
 # Vector ILFO

@@ -235,8 +235,8 @@ def linear_vector_data(episodes, frame_num = 4, action_num = 2, use_images = Fal
             else:
                 t_f.append(np.concatenate(np.array(frames[i:i+frame_num])))
 
-        stacks += t_f
-        actions += inputs[frame_num-1:]
+        stacks += t_f[:-1]
+        actions += inputs[frame_num-1:-1]
 
     return np.array(stacks), np.array(actions)
 
@@ -255,7 +255,8 @@ def inverse_vector_data(episodes, frame_num = 4, action_num = 2, use_images = Fa
                 t_f.append(np.concatenate(np.array(frames[i:i+frame_num])))
 
         stacks += t_f
-        actions += inputs[frame_num-2:-1]
+        #actions += inputs[frame_num-2:-1]
+        actions += inputs[0:-1 - frame_num + 2]
 
     return np.array(stacks), np.array(actions)
 
