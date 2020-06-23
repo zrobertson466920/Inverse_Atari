@@ -322,8 +322,8 @@ def linear_clone_model(learning_rate = 0.001, decay = 0.0, dim = 4, frame_num = 
 def linear_clone_model_continuous(learning_rate = 0.001, decay = 0.0, dim = 4, frame_num = 4, action_num = 2):
 
         image = Input(shape = (frame_num * dim,), name='image')
-        x = Dense(50*action_num, activation = 'relu')(image)
-        x = Dense(100, activation='relu')(x)
+        x = Dense(32, activation = 'relu')(image)
+        x = Dense(32, activation='relu')(x)
         x = Dense(action_num, activation='relu')(x)
         action = Dense(action_num, activation='softmax')(x)
         model = Model(inputs=[image], outputs=[action])
@@ -348,7 +348,7 @@ def linear_inverse_model(learning_rate = 0.001, decay = 0.0, dim = 4, frame_num 
 
 def linear_inverse_model_continuous(learning_rate=0.001, decay=0.0, dim=4, frame_num=4, action_num=2):
     image = Input(shape=(frame_num * dim,), name='image')
-    x = Dense(50 * action_num, activation='relu')(image)
+    x = Dense(100, activation='relu')(image)
     x = Dense(100, activation='relu')(x)
     x = Dense(action_num, activation='relu')(x)
     action = Dense(action_num, activation='softmax')(x)
